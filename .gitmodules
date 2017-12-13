@@ -1,4 +1,0 @@
-[submodule "engine"]
-	path = engine
-	url = https://github.com/fiblit/gg-engine.git
-	branch = r/crowd-demo

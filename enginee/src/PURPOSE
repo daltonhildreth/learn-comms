@@ -1,0 +1,3 @@
+This holds all source _code_ files. Any sort of asset-like source is found
+in res (resources). src/ can be further split into module related subdirectories
+such as io, ai, render/rr, and etc.

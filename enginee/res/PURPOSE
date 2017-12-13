@@ -1,0 +1,2 @@
+This holds asset-related code. Shaders are kept here as they are material
+specific, even though they hold source-important lighting calculations.

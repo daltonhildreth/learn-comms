@@ -1,0 +1,6 @@
+At some point, gg will be usable as an engine/scripting library and as an
+editor. For now, I will focus on the editor portion for the purpose of tech
+demos. However, I will keep in mind the goal of using this as a core library
+component for any game. So, I will make sure to encapsulate things such that
+what should be exposed as an API is obvious. The details of compiling both the
+API and editor as a single project will come later.
