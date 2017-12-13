@@ -80,8 +80,11 @@ void simulate(float dt) {
 
         d.pos = next_p;
         d.vel = next_v;
-        avg_velocity = (avg_velocity * static_cast<float>(vel_count) + glm::length(d.vel))
-            / (static_cast<float>(vel_count) + 1.f);
+        Agent* a = POOL.get<Agent>(e);
+        if (a && !a->done()) {
+            avg_velocity = (avg_velocity * static_cast<float>(vel_count) + glm::length(d.vel))
+                / (static_cast<float>(vel_count) + 1.f);
+        }
         d.acc = next_a;
         d.force = glm::vec3(0);
     });

@@ -10,9 +10,21 @@ glm::vec3 M_c;
 glm::mat2x3 M_relv;
 glm::mat2x3 M_relp;
 
+/*
+static void print_v3as2(glm::vec3 v, char c) {
+    std::cout << c << " " << v.x << " "<<v.z << "\n";
+}
+static void print_v2(glm::vec2 v, char c) {
+    std::cout << c << " " << v.x << " " << v.y << "\n";
+}
+static void print_v3(glm::vec3 v, char c) {
+    std::cout << c << " " << v.x << " " << v.y << " " << v.z << "\n";
+}
+*/
+
 void init() {
     std::string config_file = std::string(DATA_DIR) + "/comms.config";
-    std::cout << config_file;
+    std::cout << config_file << "\n";
     std::string config_str = *read_file(config_file);
 
     std::stringstream ss(config_str);
@@ -65,24 +77,31 @@ void run() {
         glm::vec2 diffp = best_d->pos - d.pos;
         glm::vec2 relp(glm::dot(vel_right, diffp), glm::dot(vel_forward, diffp));
 
-       glm::vec3 result =
+        glm::vec3 result =
             M_c * c_c
             + M_relv * relv
             + M_relp * relp;
-
+        for (int i =0; i < 3; ++i)
+            result[i] = glm::clamp<float>(result[i], -1, 1);
         c.buf_in(result);
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
         Dynamics& d = *POOL.get<Dynamics>(e_c);
         glm::vec2 vel_forward = c.facing;
+
         glm::vec2 vel_right = c.right();
         glm::vec2 diff = vel_forward * c.v_buf.y + vel_right * c.v_buf.x;
-        d.vel += glm::vec3(diff.x, 0.f, diff.y);
-        if (glm::length(d.vel) > 0) {
-            c.facing = glm::normalize(glm::vec2(d.vel.x, d.vel.z));
+        Agent* a = POOL.get<Agent>(e_c);
+        if (a && !a->done())
+            d.vel += glm::vec3(diff.x, 0.f, diff.y);
+        //if (!a.done()) {
+        if (glm::length(d.vel) > 0 && glm::length(a->local_goal - a->start) > 0) {
+            c.facing = glm::normalize(a->local_goal - a->start);
+                //glm::normalize(glm::vec2(d.vel.x, d.vel.z));
         }
         c.swap();
     });
 }
+
 }

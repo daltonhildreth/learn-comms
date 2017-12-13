@@ -105,6 +105,7 @@ int main(int argc, char** argv) {
         Seeder s;
         s.seed(std::stoull(argv[1]));
     }
+    Seeder s;
     demo::init();
     #ifndef NO_COMM
     comm::init();
@@ -119,10 +120,12 @@ int main(int argc, char** argv) {
     //main loop
     Timer init_time;
     Timer frame_time;
-    int fps = 0;
+    unsigned total_frames = 0;
+    unsigned fps = 0;
     auto last_s = init_time.time();
     while (!glfwWindowShouldClose(window)) {
         frame_time.tick();
+        ++total_frames;
         //FPS recorder
         if (1.f < frame_time - last_s) {
             clog << "FPS: " << fps << "\n";
@@ -133,7 +136,7 @@ int main(int argc, char** argv) {
         }
 
         double total_time = frame_time - init_time;
-        bool all_done = demo::run(1.f/60.f, total_time);//frame_time.delta_s(),
+        bool all_done = demo::run(1.f/60.f, total_time, total_frames);//frame_time.delta_s(),
         glfwSetWindowShouldClose(window, all_done);
         #ifndef NO_COMM
         comm::run();
@@ -159,12 +162,14 @@ int main(int argc, char** argv) {
         //input handling
         ui::handle_input(window, frame_time.delta_s());
     }
-    double total_time = frame_time - init_time;
+    //double total_time = static_cast<double>(total_frames)/60.0;//frame_time - init_time;
     double avg_velocity = physics::avg_velocity;
 
     ofstream results;
-    results.open(std::string(DATA_DIR)+std::string(PRE_R)+"comms.result");
-    results << avg_velocity << "\n" << total_time << "\n";
+    results.open(std::string(DATA_DIR)+"/"+std::string(PRE_R)+"comms.result");
+    float group_time = demo::run_avg_time + demo::run_std_time * 3;
+    results << avg_velocity << "\n" << group_time << "\n";
+    results.close();
 
     //free all memory and libraries
     glfwTerminate();

@@ -2,6 +2,9 @@
 #include "Pool.h"
 #include "model/CubeMesh.h"
 #include "model/LineMesh.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
+#undef GLM_ENABLE_EXPERIMENTAL
 
 namespace ai {
 Cspace2d* std_cspace;
@@ -94,14 +97,15 @@ void init() {
         #endif
 
         //planners
-        for (Entity* e : dynamics) {
-            auto& a = *POOL.get<Agent>(*e);
+        POOL.for_<Agent>([&](Agent& a, Entity&) {
             a.num_done = 0;
             a.cspace = std_cspace;
             a.prm = std_prm;
             a.local_goal = glm::vec2(0, 0);
             a.plan = nullptr;
-        }
+
+            GMP::plan_one(a);
+        });
     }
 }
 
@@ -125,15 +129,15 @@ void update_agents() {
     delete dynamic_bvh;
     rebuild_dbvh(dynamics);
 
-    for (Entity* e : dynamics) {
-        auto& a = *POOL.get<Agent>(*e);
-        if (!a.has_plan() || (a.done() && (a.start != a.final_goal))) {
+    POOL.for_<Agent>([&](Agent& a, Entity& e){
+        float dist = glm::length2(a.final_goal - a.start);
+        if (!a.has_plan() || (a.done() && dist > 1.f)) {
             GMP::plan_one(a);
         }
 
-        glm::vec2 f2d = LMP::calc_sum_force(e, static_bvh, dynamic_bvh,
+        glm::vec2 f2d = LMP::calc_sum_force(&e, static_bvh, dynamic_bvh,
             statics, dynamics);
-        POOL.get<Dynamics>(*e)->force += glm::vec3(f2d.x, 0, f2d.y);
-    }
+        POOL.get<Dynamics>(e)->force += glm::vec3(f2d.x, 0, f2d.y);
+    });
 }
 }//

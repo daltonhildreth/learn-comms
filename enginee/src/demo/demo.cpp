@@ -48,8 +48,8 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos, float h)
     POOL.attach<BoundVolume*>(e, bvid);
 }
 
-constexpr unsigned NUM_ROBOS = 10;
-constexpr unsigned NUM_WALLS = 10;
+constexpr unsigned NUM_ROBOS = 200;
+constexpr unsigned NUM_WALLS = 20;
 constexpr float rot_s = 0;//sin(1.f/NUM_ROBOS * glm::pi<float>());
 constexpr float rot_c = 1;//cos(1.f/NUM_ROBOS * glm::pi<float>());
 constexpr float rot_robo[4] = {rot_c, -rot_s, rot_s, rot_c};
@@ -83,6 +83,7 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     c.c = 0;
     c.c_buf = 0;
     c.v_buf = glm::vec2(0);
+    c.facing = a.final_goal - glm::vec2(d.pos.x, d.pos.z);
 
     POOL.attach<Transform>(e, tid);
     POOL.attach<Mesh>(e, mid);
@@ -117,22 +118,22 @@ void init() {
         robos[i] = &POOL.spawn_entity();
         //float rad = static_cast<float>(i)/NUM_ROBOS * (2.f * glm::pi<float>());
         if (i%2) {
-            create_robo(*robos[i], robo_tex, glm::vec2(-k-35, j-5));
+            create_robo(*robos[i], robo_tex, glm::vec2(-k-15, j-5));
             ++j;
             if (j > 10) {j = 0; ++k;}
         } else {
-            create_robo(*robos[i], robo_tex, glm::vec2(k+35, j - 5));
+            create_robo(*robos[i], robo_tex, glm::vec2(k+15, j - 5));
         }
     }
     j = 0; k = 0;
     for (unsigned i = NUM_ROBOS/2; i < NUM_ROBOS; ++i) {
         robos[i] = &POOL.spawn_entity();
         if (i%2) {
-            create_robo(*robos[i], robo_tex, glm::vec2(k-5, -j-35));
+            create_robo(*robos[i], robo_tex, glm::vec2(k-5, -j-15));
             ++k;
             if (k > 10) {k = 0; ++j;}
         } else {
-            create_robo(*robos[i], robo_tex, glm::vec2(k-5, j+35));
+            create_robo(*robos[i], robo_tex, glm::vec2(k-5, j+15));
         }
     }
 
@@ -170,15 +171,49 @@ void init() {
     }
 }
 
-bool run(double dt, double time) {
+float run_avg_time = 0;
+float run_std_time = 0;
+float run_sum_times_sq = 0;
+int total_num_done = 0;
+
+static void update_runs(float time) {
+    float ftotal = static_cast<float>(++total_num_done);
+    run_avg_time += (time - run_avg_time) / ftotal;
+    run_sum_times_sq += time * time;
+    run_std_time = sqrt(run_sum_times_sq * ftotal - run_avg_time * run_avg_time) / ftotal;
+}
+
+bool run(double dt, double time, unsigned frame_count) {
     UNUSED(dt, time);
     bool all_done = true;
+    int num_done = 0;
+    static double last_s = 0;
     POOL.for_<Agent>([&](Agent& ai, Entity& e) {
         UNUSED(e);
         if (!ai.done()) {
             all_done = false;
+        } else {
+            ++num_done;
         }
     });
+    float fframes = static_cast<float>(frame_count);
+    if (time - last_s > 1) {
+        std::cout << "NUM DONE: " << num_done << "\n";
+        std::cout << "FRAMES: " << fframes << "\n";
+        last_s = time;
+    }
+    for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
+         update_runs(fframes/60.f);
+    }
+    if (fframes > 60.f*120.f) {
+        POOL.for_<Agent>([&](Agent& ai, Entity&){
+            if (!ai.done()) {
+                float finish_time = 2*glm::length(ai.final_goal - ai.start) + fframes/60.f;
+                update_runs(finish_time);
+            }
+        });
+        all_done = true;
+    }
     return all_done;
 }
 }

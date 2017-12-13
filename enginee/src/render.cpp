@@ -6,6 +6,7 @@
 #include "light/SpotLight.h"
 #include "model/LineMesh.h"
 #include "model/CubeMesh.h"
+#include "util/debug.h"
 #include "io.h"
 #include "ui.h"
 #include "Pool.h"
@@ -192,6 +193,8 @@ void input_key(GLFWwindow* w, double ddt) {
             glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
+    #else
+    UNUSED(w);
     #endif
 
 }

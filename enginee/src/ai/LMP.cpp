@@ -73,19 +73,21 @@ glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
     if (static_cast<size_t>(a.num_done) < a.plan->size()) {
         t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
 
-        size_t next = static_cast<size_t>(a.num_done + 1);
         size_t target = static_cast<size_t>(a.num_done);
+        bool at_target = glm::length2(bv._o - (*(a.plan))[target]) < .01;
+        if (at_target)
+            ++a.num_done;
+
+        size_t next = static_cast<size_t>(a.num_done + 1);
         bool incomplete = a.plan->size() > next;
         bool next_visible = a.cspace->line_of_sight(bv._o, (*(a.plan))[next]);
-        bool at_target = glm::length2(bv._o - (*(a.plan))[target]) < 0.001;
-        while (at_target || (incomplete && next_visible)) {
+
+        while (incomplete && next_visible) {
             ++a.num_done;
             t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
             next = static_cast<size_t>(a.num_done + 1);
-            target = static_cast<size_t>(a.num_done);
             incomplete = a.plan->size() > next;
             next_visible = a.cspace->line_of_sight(bv._o, (*(a.plan))[next]);
-            at_target = glm::length2(bv._o - (*(a.plan))[target]) < 0.001;
         }
     } else {
         //at end, go to end.
@@ -155,9 +157,9 @@ glm::vec2 boid_force(Agent* a, BVH* dynamic_bvh, std::vector<Agent*> dynamics) {
     glm::vec2 follow_force;
     glm::vec2 spread_force;
 
-    std::vector<Agent*> NNdynamic = 
+    std::vector<Agent*> NNdynamic =
         dynamic_bvh->query(new Circ(a->bv->o, 1.1f));
-    for (size_t i = 0; i < NNdynamic.size(); i++) { 
+    for (size_t i = 0; i < NNdynamic.size(); i++) {
         Agent* boid = NNdynamic[i];
         if (!boid->ai->has_boid_f() || boid == a) {
             continue;
