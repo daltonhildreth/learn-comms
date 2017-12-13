@@ -8,15 +8,9 @@ std::default_random_engine Seeder::_gen = std::default_random_engine();
 
 
 Seeder::Seeder() {
-    static bool seeded = false;
-    if (!seeded) {
-        _first = hrclock::now();
-        reseed();
-    }
 }
 
 void Seeder::reseed() {
-    seed(static_cast<uint64_t>(_first.time_since_epoch().count()));
 }
 
 uint64_t Seeder::seed() {

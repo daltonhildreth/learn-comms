@@ -48,7 +48,7 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos, float h)
     POOL.attach<BoundVolume*>(e, bvid);
 }
 
-constexpr unsigned NUM_ROBOS = 200;
+constexpr unsigned NUM_ROBOS = 100;
 constexpr unsigned NUM_WALLS = 20;
 constexpr float rot_s = 0;//sin(1.f/NUM_ROBOS * glm::pi<float>());
 constexpr float rot_c = 1;//cos(1.f/NUM_ROBOS * glm::pi<float>());

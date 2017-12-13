@@ -1,13 +1,14 @@
 from random import random
 from shutil import copyfile
-from random import random
+from random import random, randint, uniform
+from copy import copy
+from math import exp
 import os
 import numpy as np
 
 best = 0
 #start = float(input("start T:"))
 #schedule = float(input("schedule T:"))
-epochs - int(input("enter epoch count"))
 i = 0
 
 def acceptance(e_best, e_random, T):
@@ -16,43 +17,39 @@ def acceptance(e_best, e_random, T):
     else:
         return exp(-(e_best - e_random) / T)
 
-#will get M matrix
-def read_config(file):
-    dims = file.readline().split(' ')
-    M = np.matrix([[0 for _ in dims[0]] for _ in dims[1]])
-    for i in range(dims[0]):
-        line = file.readline()
-        M[i] = [float(s) for s in line.split(' ')]
-    return M
-
 def write_config(file, config):
-    shape = np.shape(config)
-    file.write(shape[0] + " " + shape[1] + "\n")
-    for i in range(0, shape[0]):
-        for j in range(0, shape[1]):
-            file.write(str(config[i][j]))
-            if (j != shape[1] - 1)
+    file.write("3 5\n")
+    for i in range(0, 3):
+        for j in range(0, 5):
+            file.write(str(config[i*5+j]))
+            if (j != 4):
                 file.write(' ')
         file.write('\n')
 
 #will get results to influence nn choice from M
 def read_result(file):
     avg_vel = float(file.readline().strip())
-    total_time = float(file.readline().strip())
+    confident_time = float(file.readline().strip())
     #avg_time =
-    return (avg_vel, total_time)
+    return (avg_vel, confident_time)
 
-if __name__ = '__main__':
+if __name__ == '__main__':
     seed = input("seed: ")
     T = float(input("temp: "))
     rate = float(input("rate: "))
     perturb = float(input("perturb: "))
 
     # get baseline
-    os.system("./engine/build/nocommnorender/bin/gg-engine "+seed)
+    os.system("build/nocomm_norender/bin/gg-engine "+seed)
+    # result = avg time + 3 * std deviation
+    with open('data/comms.result','r') as result_f:
+        baseline = read_result(result_f)[1]
+    # copy comms.result to comms_ti.result
+    copyfile("data/comms.result","data/comms_base.result")
+    print("base",baseline)
 
     ###
-    M = np.matrix([[0 for i in range(5)] for j in range(3)])
+    M = [0 for i in range(15)]
 
     ###
     i = 0
@@ -65,43 +62,47 @@ if __name__ = '__main__':
         #---noop
         # perturb it in a random dimension
         dim = randint(0, 14)
-        perturb = random(-perturb, perturb)
-        new_M = deepcopy(M)
-        new_M[dim/3][dim%3] += perturb
+        perturb = uniform(-perturb, perturb)
+        new_M = copy(M)
+        new_M[dim] += perturb
+        print(new_M)
 
         # write M
-        with config_f as open('data/comms.config'):
+        with open('data/comms.config','w') as config_f:
             write_config(config_f, new_M)
 
         # run sim
-        os.system("./engine/build/commnorender/bin/gg-engine "+seed)
+        os.system("build/comm_norender/bin/gg-engine "+seed)
 
         # copy comms.result to comms_ti.result
         copyfile("data/comms.result","data/comms_t"+str(i)+".result")
 
         # result = avg time + 3 * std deviation
-        with result_f as open('data/comms.result','r'):
-            result = read_result(result_f)
+        with open('data/comms.result','r') as result_f:
+            result = read_result(result_f)[1]
+            print("r1",result)
             result /= baseline
+            print("norm",result)
 
         # if better, take the new M
         # otherwise, take it with probability exp(-(current - new)/T)
         if acceptance(best, result, T):
-            M[dim/3][dim%3] += perturb
+            M[dim] += perturb
             best = result
             i_best = i
 
         # write out to comms.config
-        with config_clone as open('data/comms.config','w'):
-            write_config(config_clone, config)
+        with open('data/comms.config','w') as config_clone:
+            write_config(config_clone, new_M)
 
         # copy to comms_ti.config
-        copyfile('data/comms.config','data/comms_t'+str(i)+".result")
+        copyfile('data/comms.config','data/comms_t'+str(i)+".config")
 
         # update temp
-        T = T / (1 + rate)
+        T -= rate
 
     # print (order of) best
     print(M)
+    print()
     print(best)
     print(i_best)
