@@ -8,6 +8,7 @@
 
 //todo: make it a class :P
 namespace ui {
+extern bool paused;
 extern glm::vec2 d_cursor_pos;
 extern glm::vec2 cursor_pos;
 extern float cursor_sensitivity;

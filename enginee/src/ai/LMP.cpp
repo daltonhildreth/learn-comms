@@ -240,7 +240,7 @@ glm::vec2 LMP::calc_sum_force(
     //have to replace this circle with an extrusion or cone. ... or a shifted
     //circle! this works pretty damn well! 1000 Agents at 30FPS!! :D
     glm::vec2 vel2d(d.vel.x, d.vel.z);
-    Circ q(bv._o + vel2d*.5f, real_speed * .5f * static_cast<float>(TTC_THRESHOLD));
+    Circ q(bv._o, real_speed * static_cast<float>(TTC_THRESHOLD));
 
     std::vector<Entity*> NNdynamic = dynamic_bvh->query(&q);
     for (Entity* nearby : NNdynamic) {

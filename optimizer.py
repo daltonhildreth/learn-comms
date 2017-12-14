@@ -15,7 +15,7 @@ def acceptance(e_best, e_random, T):
     if e_random < e_best:
         return 1
     else:
-        return exp(-(e_best - e_random) / T)
+        return exp((e_best - e_random) / T)
 
 def write_config(file, config):
     file.write("3 5\n")
@@ -55,17 +55,24 @@ if __name__ == '__main__':
     i = 0
     i_best = -1
     best = float('inf')
+    i_actual_best = -1
+    actual_best = float('inf')
     # repeat
     while (T > 0):
         # take M
         i += 1
         #---noop
         # perturb it in a random dimension
-        dim = randint(0, 14)
-        perturb = uniform(-perturb, perturb)
+        dim = randint(0, 6)
+        shift = uniform(-perturb, perturb)
         new_M = copy(M)
-        new_M[dim] += perturb
-        print(new_M)
+        if (dim < 6):
+            new_M[dim] += shift
+        elif dim == 6:
+            new_M[10] += shift
+        print('dim:', dim)
+        print('perturb:', shift)
+        print('new M:', new_M)
 
         # write M
         with open('data/comms.config','w') as config_f:
@@ -86,11 +93,24 @@ if __name__ == '__main__':
 
         # if better, take the new M
         # otherwise, take it with probability exp(-(current - new)/T)
-        if acceptance(best, result, T):
-            M[dim] += perturb
+        print('accept:',acceptance(best, result, T))
+        if acceptance(best, result, T) >= uniform(0, 1):
+            if (dim < 6):
+                M[dim] += shift
+            elif dim == 6:
+                M[10] += shift
             best = result
             i_best = i
-
+        if actual_best > result:
+            actual_best = result;
+            i_actual_best = i
+        print('t:'+str(T))
+        print('M:',M)
+        print('r:'+str(result))
+        print('b:'+str(best))
+        print('ab:'+str(actual_best))
+        print('i:'+str(i_best))
+        print('ai:'+str(i_actual_best))
         # write out to comms.config
         with open('data/comms.config','w') as config_clone:
             write_config(config_clone, new_M)
@@ -103,6 +123,8 @@ if __name__ == '__main__':
 
     # print (order of) best
     print(M)
-    print()
+    print(result)
     print(best)
+    print(actual_best)
     print(i_best)
+    print(i_actual_best)

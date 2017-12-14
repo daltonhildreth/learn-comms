@@ -124,38 +124,40 @@ int main(int argc, char** argv) {
     unsigned fps = 0;
     auto last_s = init_time.time();
     while (!glfwWindowShouldClose(window)) {
-        frame_time.tick();
-        ++total_frames;
-        //FPS recorder
-        if (1.f < frame_time - last_s) {
-            clog << "FPS: " << fps << "\n";
-            fps = 0;
-            last_s = frame_time.time();
-        } else {
-            ++fps;
-        }
+        if (!ui::paused){
+            frame_time.tick();
+            ++total_frames;
+            //FPS recorder
+            if (1.f < frame_time - last_s) {
+                clog << "FPS: " << fps << "\n";
+                fps = 0;
+                last_s = frame_time.time();
+            } else {
+                ++fps;
+            }
 
-        double total_time = frame_time - init_time;
-        bool all_done = demo::run(1.f/60.f, total_time, total_frames);//frame_time.delta_s(),
-        glfwSetWindowShouldClose(window, all_done);
-        #ifndef NO_COMM
-        comm::run();
-        #endif
-        ////AI: iterates over agents, which often depend on boundvolumes, dynamics
-        //and transforms.
-        ai::update_agents();
-        ////Physics: iterates over dynamics, which often depend on boundvolumes,
-        //and transforms.
-        physics::simulate(1.f/60.f);//static_cast<float>(frame_time.delta_s()));
-        ////sync: currently some components have redundant information that
-        //needs to be synced every frame.
-        POOL.all_sync();
-        #ifndef NO_RENDER
-        ////Render: iterates over meshes, which often depend on transforms.
-        render::draw();
-        //double buffer
-        glfwSwapBuffers(window);
-        #endif
+            double total_time = frame_time - init_time;
+            bool all_done = demo::run(1.f/60.f, total_time, total_frames);//frame_time.delta_s(),
+            glfwSetWindowShouldClose(window, all_done);
+            #ifndef NO_COMM
+            comm::run();
+            #endif
+            ////AI: iterates over agents, which often depend on boundvolumes, dynamics
+            //and transforms.
+            ai::update_agents();
+            ////Physics: iterates over dynamics, which often depend on boundvolumes,
+            //and transforms.
+            physics::simulate(1.f/60.f);//static_cast<float>(frame_time.delta_s()));
+            ////sync: currently some components have redundant information that
+            //needs to be synced every frame.
+            POOL.all_sync();
+            #ifndef NO_RENDER
+            ////Render: iterates over meshes, which often depend on transforms.
+            render::draw();
+            //double buffer
+            glfwSwapBuffers(window);
+            #endif
+        }
         ////UI: would iterate over controllers, but it just handles specific
         //entities for now
         glfwPollEvents();

@@ -107,9 +107,9 @@ void init(glm::vec<2, int> dims) {
 
     //set up camera
     cam = make_unique<Camera>();
-    cam->aspect(static_cast<float>(dims.x / dims.y));
-    cam->set_pos(glm::vec3(0, 20, 20));
-    cam->set_rot(glm::vec3(0, -1, -1), glm::vec3(0, 1, 0));
+    cam->aspect(static_cast<float>(dims.x) / static_cast<float>(dims.y));
+    cam->set_pos(glm::vec3(0, 25.f/2.f, 5.f/2.f));
+    cam->set_rot(glm::vec3(0, -1, -.2), glm::vec3(0, 0, -1));
 
     //TODO: Uniform buffer object; see below
     cam->apply_proj(*mtl);
@@ -139,6 +139,12 @@ void draw() {
             mtl->set("model", t->global_mat());
         } else {
             mtl->set("model", glm::mat4(1.f));
+        }
+
+        auto c = POOL.get<CommComp>(e);
+        if (c) {
+            float norm = c->c*100;
+            m._diffuse = glm::vec3(-(norm>0?0:norm), (norm>0?norm:0), 0);
         }
         //update models _and_ do glDraw; this combination seems to cause issues.
         if (m._type == Mesh::Type::LINE) {

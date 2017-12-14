@@ -2,6 +2,12 @@
 #include <iostream>
 
 namespace ui {
+bool paused =
+#ifndef NO_RENDER
+    true;
+#else
+    false;
+#endif
 float cursor_sensitivity = 1.f;
 glm::vec2 d_cursor_pos = glm::vec2(0.f, 0.f);
 glm::vec2 cursor_pos = glm::vec2(0.f, 0.f);
@@ -35,6 +41,9 @@ void handle_input(GLFWwindow* w, double delta_s) {
         return;
     }
 
+    if (ui::edge_up(GLFW_KEY_SPACE)) {
+        ui::paused = !ui::paused;
+    }
     for (const auto& f : handlers) {
         f(w, delta_s);
     }
