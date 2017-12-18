@@ -49,7 +49,7 @@ if __name__ == '__main__':
     print("base",baseline)
 
     ###
-    M = [0 for i in range(15)]
+    M = [0 for _ in range(15)]
 
     ###
     i = 0
@@ -64,14 +64,13 @@ if __name__ == '__main__':
         #---noop
         # perturb it in a random dimension
         dim = randint(0, 6)
-        shift = uniform(-perturb, perturb)
         new_M = copy(M)
+        #for dim in range(0, 7):
+        shift = uniform(-perturb, perturb)
         if (dim < 6):
             new_M[dim] += shift
         elif dim == 6:
             new_M[10] += shift
-        print('dim:', dim)
-        print('perturb:', shift)
         print('new M:', new_M)
 
         # write M
@@ -95,10 +94,7 @@ if __name__ == '__main__':
         # otherwise, take it with probability exp(-(current - new)/T)
         print('accept:',acceptance(best, result, T))
         if acceptance(best, result, T) >= uniform(0, 1):
-            if (dim < 6):
-                M[dim] += shift
-            elif dim == 6:
-                M[10] += shift
+            M = copy(new_M)
             best = result
             i_best = i
         if actual_best > result:

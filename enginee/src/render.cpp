@@ -21,7 +21,29 @@
 
 using namespace std;
 
+#include "demo/demo.h"
 namespace render {
+
+static const int SCENE = demo::SCENE;
+//should = demo::SCENE
+
+static float cam_dist() {
+    switch (SCENE) {
+    case 0:
+    case 2:
+    case 3:
+        return 1.f;
+    case 4:
+        return 1.2f;
+    case 1:
+        return 2.f;
+    case 5:
+    case 6:
+        return 1.2f;
+    }
+    return 1.f;
+}
+
 unique_ptr<Shader> mtl;
 vector<unique_ptr<DirLight>> dir_lights;
 vector<unique_ptr<PointLight>> point_lights;
@@ -108,7 +130,7 @@ void init(glm::vec<2, int> dims) {
     //set up camera
     cam = make_unique<Camera>();
     cam->aspect(static_cast<float>(dims.x) / static_cast<float>(dims.y));
-    cam->set_pos(glm::vec3(0, 25.f/2.f, 5.f/2.f));
+    cam->set_pos(glm::vec3(0, 25.f * cam_dist(), 5.f * cam_dist()));
     cam->set_rot(glm::vec3(0, -1, -.2), glm::vec3(0, 0, -1));
 
     //TODO: Uniform buffer object; see below

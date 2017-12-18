@@ -104,6 +104,7 @@ add_definitions(
 )
 
 #add_definitions(-DSTOP_COLLISION)
+add_definitions(-DSCENE_N=6)
 add_definitions(-DNO_COMM)
 add_definitions(-DNO_RENDER)
 add_definitions(-DDATA_DIR="/home/dalton/Documents/learn-comms/data")

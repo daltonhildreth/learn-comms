@@ -1,7 +1,7 @@
 \.*
 !\.git*
 [Tt]emp/
-[Bb]uild/
+[Bb]uild*/
 [Bb]in/
 [Oo]bj/
 [Cc][Mm]ake[Ff]iles/

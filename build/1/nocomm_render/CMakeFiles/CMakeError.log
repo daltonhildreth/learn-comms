@@ -1,0 +1,55 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_fdfb7/fast"
+/usr/bin/make -f CMakeFiles/cmTC_fdfb7.dir/build.make CMakeFiles/cmTC_fdfb7.dir/build
+make[1]: Entering directory '/home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_fdfb7.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_fdfb7.dir/CheckSymbolExists.c.o   -c /home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_fdfb7
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fdfb7.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_fdfb7.dir/CheckSymbolExists.c.o  -o cmTC_fdfb7 
+CMakeFiles/cmTC_fdfb7.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x1b): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_fdfb7.dir/build.make:97: recipe for target 'cmTC_fdfb7' failed
+make[1]: *** [cmTC_fdfb7] Error 1
+make[1]: Leaving directory '/home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_fdfb7/fast' failed
+make: *** [cmTC_fdfb7/fast] Error 2
+
+File /home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_660ef/fast"
+/usr/bin/make -f CMakeFiles/cmTC_660ef.dir/build.make CMakeFiles/cmTC_660ef.dir/build
+make[1]: Entering directory '/home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_660ef.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_660ef.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.9/Modules/CheckFunctionExists.c
+Linking C executable cmTC_660ef
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_660ef.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    -rdynamic CMakeFiles/cmTC_660ef.dir/CheckFunctionExists.c.o  -o cmTC_660ef -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_660ef.dir/build.make:97: recipe for target 'cmTC_660ef' failed
+make[1]: *** [cmTC_660ef] Error 1
+make[1]: Leaving directory '/home/dalton/Documents/learn-comms/build/1/nocomm_render/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_660ef/fast' failed
+make: *** [cmTC_660ef/fast] Error 2
+
+
