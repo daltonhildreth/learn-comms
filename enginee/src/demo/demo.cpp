@@ -17,7 +17,7 @@
 using namespace std;
 
 namespace demo {
-const int SCENE = SCENE_N;
+const int SCENE = 7;
 //0: circle radius 10; 30 agents; 30s
 //1: circle radius 20; 90 agents; 70s
 //2: circle radius 10; 30 agents; 40 .1m x .1m posts in radius 8; 40s
@@ -25,6 +25,8 @@ const int SCENE = SCENE_N;
 //4: intersection 14 wide; 112 agents; 40s
 //5: intersection 14 wide; 112 agents; swapped goals (-pos); 70s
 //6: intersection 14 wide; 112 agents; curbed; 70s
+
+//7: clogged doorway with 5 running in, and 25 escaping.
 
 template <typename T>
 int sgn(T val) {
@@ -36,7 +38,8 @@ constexpr unsigned num_robos() {
     case 0:
     case 2:
     case 3:
-        return 30;
+    case 7:
+        return 60;
     case 1:
         return 60;
     case 4:
@@ -58,7 +61,9 @@ constexpr static unsigned num_walls() {
         case 3:
             return 1;
         case 6:
-            return 20;
+            return 13;
+        case 7:
+            return 30;
     }
 }
 
@@ -80,6 +85,7 @@ static BoundVolume* set_wall_size(glm::vec2 pos) {
     case 3:
         return new Rect(pos, 4.f, 4.f);
     case 6:
+    case 7:
         return new Rect(pos, 2.f, 2.f);
     }
 }
@@ -96,6 +102,7 @@ static float set_wall_scale() {
     case 3:
         return 4.f;
     case 6:
+    case 7:
         return 2.f;
     }
 }
@@ -106,16 +113,22 @@ constexpr void set_goal_scene(glm::vec2 &goal, glm::vec2 pos) {
     case 1:
     case 2:
     case 3:
-    case 5:
+    case 5: {
         goal = -glm::vec2(pos.x, pos.y);
         break;
+    }
     case 4:
-    case 6:
+    case 6: {
         int axis = sgn<float>(abs(pos.x) - abs(pos.y));
         axis = (axis == 0 ? 1 : axis);
         float faxis = static_cast<float>(axis);
         goal = glm::vec2(-faxis * pos.x, faxis * pos.y);
         break;
+    }
+    case 7: {
+        goal = glm::vec2(-pos.x, pos.y);
+        break;
+    }
     }
 }
 
@@ -131,7 +144,7 @@ static glm::vec2 agents_pos(unsigned i) {
         return 20.f * glm::vec2(cos(rad), sin(rad));
     case 4:
     case 5:
-    case 6:
+    case 6: {
         float side = (i%2 ? -1 : 1);
         unsigned k = (i-i%2) / 14;
         if (i >= NUM_ROBOS/2) {
@@ -146,6 +159,15 @@ static glm::vec2 agents_pos(unsigned i) {
             y = t;
         }
         return glm::vec2(x, y);
+    }
+    case 7: {
+        unsigned col = i % 5;
+        unsigned row = i / 5;
+        float side = (row < 1 ? -3.f : 3.f);
+        float x = static_cast<float>(row) * 1.f + side;
+        float y = static_cast<float>(col) * 1.f - 2.f;
+        return glm::vec2(x, y);
+    }
     }
 }
 
@@ -165,7 +187,7 @@ static glm::vec2 set_walls_pos(unsigned i) {
     }
     case 3:
         return glm::vec2(0.f);
-    case 6: {
+    case 6:
         switch (i) {
         case 0: return glm::vec2(-3.f, -3.f);
         case 11: return glm::vec2(-4.f, -4.f);
@@ -183,7 +205,10 @@ static glm::vec2 set_walls_pos(unsigned i) {
         case 4: return glm::vec2(4.f, 4.f);
         case 8: return glm::vec2(6.f, 5.f);
         }
-    }
+    case 7:
+        float x = 0;
+        float y = 2 * (static_cast<float>(i) - 15) + 1.f * (i > 14);
+        return glm::vec2(x, y);
     }
     return glm::vec2(1000.f);
 }
@@ -195,12 +220,12 @@ static float set_demo_length() {
     case 2:
     case 3:
     case 4:
+    case 6:
         return 40.f;
     case 1:
     case 5:
+    case 7:
         return 70.f;
-    case 6:
-        return 40.f;
     }
 }
 
@@ -352,7 +377,7 @@ bool run(double dt, double time, unsigned frame_count) {
     });
     float fframes = static_cast<float>(frame_count);
     if (time - last_s > 1) {
-        std::cout << "NUM DONE: " << num_done << "\n";
+        std::cout << "NUM DONE: " << num_done << std::flush;//\n;
         std::cout << "FRAMES: " << fframes << "\n";
         last_s = time;
     }

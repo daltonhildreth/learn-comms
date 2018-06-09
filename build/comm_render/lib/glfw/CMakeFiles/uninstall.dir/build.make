@@ -43,10 +43,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/dalton/Documents/learn-comms/enginee
+CMAKE_SOURCE_DIR = /home/dalton/code/learn-comms/enginee
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/dalton/Documents/learn-comms/build/6/comm_render
+CMAKE_BINARY_DIR = /home/dalton/code/learn-comms/build/comm_render
 
 # Utility rule file for uninstall.
 
@@ -54,7 +54,7 @@ CMAKE_BINARY_DIR = /home/dalton/Documents/learn-comms/build/6/comm_render
 include lib/glfw/CMakeFiles/uninstall.dir/progress.make
 
 lib/glfw/CMakeFiles/uninstall:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_render/lib/glfw && /usr/bin/cmake -P /home/dalton/Documents/learn-comms/build/6/comm_render/lib/glfw/cmake_uninstall.cmake
+	cd /home/dalton/code/learn-comms/build/comm_render/lib/glfw && /usr/bin/cmake -P /home/dalton/code/learn-comms/build/comm_render/lib/glfw/cmake_uninstall.cmake
 
 uninstall: lib/glfw/CMakeFiles/uninstall
 uninstall: lib/glfw/CMakeFiles/uninstall.dir/build.make
@@ -67,10 +67,10 @@ lib/glfw/CMakeFiles/uninstall.dir/build: uninstall
 .PHONY : lib/glfw/CMakeFiles/uninstall.dir/build
 
 lib/glfw/CMakeFiles/uninstall.dir/clean:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_render/lib/glfw && $(CMAKE_COMMAND) -P CMakeFiles/uninstall.dir/cmake_clean.cmake
+	cd /home/dalton/code/learn-comms/build/comm_render/lib/glfw && $(CMAKE_COMMAND) -P CMakeFiles/uninstall.dir/cmake_clean.cmake
 .PHONY : lib/glfw/CMakeFiles/uninstall.dir/clean
 
 lib/glfw/CMakeFiles/uninstall.dir/depend:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_render && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/dalton/Documents/learn-comms/enginee /home/dalton/Documents/learn-comms/enginee/lib/glfw /home/dalton/Documents/learn-comms/build/6/comm_render /home/dalton/Documents/learn-comms/build/6/comm_render/lib/glfw /home/dalton/Documents/learn-comms/build/6/comm_render/lib/glfw/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/dalton/code/learn-comms/build/comm_render && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/dalton/code/learn-comms/enginee /home/dalton/code/learn-comms/enginee/lib/glfw /home/dalton/code/learn-comms/build/comm_render /home/dalton/code/learn-comms/build/comm_render/lib/glfw /home/dalton/code/learn-comms/build/comm_render/lib/glfw/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : lib/glfw/CMakeFiles/uninstall.dir/depend
 

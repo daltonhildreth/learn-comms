@@ -71,13 +71,12 @@ glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
     glm::vec2 t_new = a.local_goal;
     //if not at end
     if (static_cast<size_t>(a.num_done) < a.plan->size()) {
-        t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
-
         size_t target = static_cast<size_t>(a.num_done);
         bool at_target = glm::length2(bv._o - (*(a.plan))[target]) < .01;
         if (at_target)
             ++a.num_done;
 
+        t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
         size_t next = static_cast<size_t>(a.num_done + 1);
         bool incomplete = a.plan->size() > next;
         bool next_visible = a.cspace->line_of_sight(bv._o, (*(a.plan))[next]);
@@ -283,5 +282,5 @@ glm::vec2 LMP::calc_sum_force(
     }
     */
 
-    return goal_F + ttc_F;
+    return goal_F;// + ttc_F;
 }

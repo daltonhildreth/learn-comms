@@ -103,11 +103,15 @@ add_definitions(
     -DPROJECT_SRC_DIR=\"${PROJECT_SOURCE_DIR}\"
 )
 
-#add_definitions(-DSTOP_COLLISION)
-add_definitions(-DSCENE_N=6)
-add_definitions(-DNO_COMM)
-add_definitions(-DNO_RENDER)
-add_definitions(-DDATA_DIR="/home/dalton/Documents/learn-comms/data")
+add_definitions(-DSTOP_COLLISION)
+add_definitions(-DSCENE_N=5)
+if (NO_COMM)
+    add_definitions(-DNO_COMM)
+endif()
+if (NO_RENDER)
+    add_definitions(-DNO_RENDER)
+endif()
+add_definitions(-DDATA_DIR=\"${PROJECT_SOURCE_DIR}/..\"\"/data\")
 add_definitions(-DPRE_R=\"\")#"\no\"
 #add_definitions(-DPRM_DEBUG)
 

@@ -4,26 +4,26 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
-  "/home/dalton/Documents/learn-comms/enginee/lib/glad/glad.c" "/home/dalton/Documents/learn-comms/build/6/comm_render/CMakeFiles/glad.dir/lib/glad/glad.c.o"
+  "/home/dalton/code/learn-comms/enginee/lib/glad/glad.c" "/home/dalton/code/learn-comms/build/comm_render/CMakeFiles/glad.dir/lib/glad/glad.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")
 
 # Preprocessor definitions for this target.
 set(CMAKE_TARGET_DEFINITIONS_C
-  "DATA_DIR=\"/home/dalton/Documents/learn-comms/data\""
+  "DATA_DIR=\"/home/dalton/code/learn-comms/enginee/..\"\"/data\""
   "GLFW_INCLUDE_NONE"
   "PRE_R=\"\""
-  "PROJECT_SRC_DIR=\"/home/dalton/Documents/learn-comms/enginee\""
-  "SCENE_N=6"
+  "PROJECT_SRC_DIR=\"/home/dalton/code/learn-comms/enginee\""
+  "SCENE_N=5"
   )
 
 # The include file search paths:
 set(CMAKE_C_TARGET_INCLUDE_PATH
-  "/home/dalton/Documents/learn-comms/enginee/src"
-  "/home/dalton/Documents/learn-comms/enginee/lib/glad"
-  "/home/dalton/Documents/learn-comms/enginee/lib/glfw/include"
-  "/home/dalton/Documents/learn-comms/enginee/lib/glm"
-  "/home/dalton/Documents/learn-comms/enginee/lib"
+  "/home/dalton/code/learn-comms/enginee/src"
+  "/home/dalton/code/learn-comms/enginee/lib/glad"
+  "/home/dalton/code/learn-comms/enginee/lib/glfw/include"
+  "/home/dalton/code/learn-comms/enginee/lib/glm"
+  "/home/dalton/code/learn-comms/enginee/lib"
   )
 
 # Targets to which this target links.

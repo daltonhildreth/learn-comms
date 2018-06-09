@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/dalton/Documents/learn-comms/enginee/lib/glad/glad.c
+/home/dalton/code/learn-comms/enginee/lib/glad/glad.c
 stdio.h
 -
 stdlib.h
@@ -14,15 +14,15 @@ stdlib.h
 string.h
 -
 glad.h
-/home/dalton/Documents/learn-comms/enginee/lib/glad/glad.h
+/home/dalton/code/learn-comms/enginee/lib/glad/glad.h
 
-/home/dalton/Documents/learn-comms/enginee/lib/glad/glad.h
+/home/dalton/code/learn-comms/enginee/lib/glad/glad.h
 windows.h
 -
 stddef.h
 -
 khrplatform.h
-/home/dalton/Documents/learn-comms/enginee/lib/glad/khrplatform.h
+/home/dalton/code/learn-comms/enginee/lib/glad/khrplatform.h
 inttypes.h
 -
 inttypes.h
@@ -36,7 +36,7 @@ stdint.h
 inttypes.h
 -
 
-/home/dalton/Documents/learn-comms/enginee/lib/glad/khrplatform.h
+/home/dalton/code/learn-comms/enginee/lib/glad/khrplatform.h
 stdint.h
 -
 inttypes.h

@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/dalton/Documents/learn-comms/enginee
+CMAKE_SOURCE_DIR = /home/dalton/code/learn-comms/enginee
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/dalton/Documents/learn-comms/build/6/comm_norender
+CMAKE_BINARY_DIR = /home/dalton/code/learn-comms/build/comm_norender
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -126,14 +126,14 @@ install/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(CMAKE_COMMAND) -E cmake_progress_start /home/dalton/Documents/learn-comms/build/6/comm_norender/CMakeFiles /home/dalton/Documents/learn-comms/build/6/comm_norender/lib/glfw/CMakeFiles/progress.marks
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dalton/Documents/learn-comms/build/6/comm_norender/CMakeFiles 0
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(CMAKE_COMMAND) -E cmake_progress_start /home/dalton/code/learn-comms/build/comm_norender/CMakeFiles /home/dalton/code/learn-comms/build/comm_norender/lib/glfw/CMakeFiles/progress.marks
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/dalton/code/learn-comms/build/comm_norender/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/clean
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/clean
 .PHONY : clean
 
 # The main clean target
@@ -143,22 +143,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/preinstall
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/preinstall
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 lib/glfw/CMakeFiles/uninstall.dir/rule:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/CMakeFiles/uninstall.dir/rule
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f CMakeFiles/Makefile2 lib/glfw/CMakeFiles/uninstall.dir/rule
 .PHONY : lib/glfw/CMakeFiles/uninstall.dir/rule
 
 # Convenience name for target.
@@ -168,7 +168,7 @@ uninstall: lib/glfw/CMakeFiles/uninstall.dir/rule
 
 # fast build rule for target.
 uninstall/fast:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(MAKE) -f lib/glfw/CMakeFiles/uninstall.dir/build.make lib/glfw/CMakeFiles/uninstall.dir/build
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(MAKE) -f lib/glfw/CMakeFiles/uninstall.dir/build.make lib/glfw/CMakeFiles/uninstall.dir/build
 .PHONY : uninstall/fast
 
 # Help Target
@@ -195,6 +195,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

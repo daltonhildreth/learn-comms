@@ -17,7 +17,7 @@ SEED = 5117
 M_SHAPE = (3,5)
 
 def write_config(file, config):
-    file.write(M_SHAPE[0] + " " + M_SHAPE[1] + "\n")
+    file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
     for i in range(0, M_SHAPE[0]):
         for j in range(0, M_SHAPE[1]):
             file.write(str(config[i][j]))
@@ -37,27 +37,38 @@ def result_metric(result):
     return conf_time
 
 class Particle:
+    pid = 0
     def __init__(self, Blo, Bhi):
-        self.Mx = np.empty(shape=M_SHAPE)
+        self.pid_me = Particle.pid
+        Particle.pid += 1
+
+        self.Mx = np.zeros(shape=M_SHAPE)
         for row in range(len(self.Mx)):
             for col in range(len(self.Mx[row])):
+                if row > 0 and col > 0:
+                    continue
                 self.Mx[row][col] = uniform(Blo[row][col], Bhi[row][col])
         self.Mx = Evaluation(self.Mx)
 
         self.Mp = self.Mx
 
-        self.Mv = np.empty(shape=M_SHAPE)
+        self.Mv = np.zeros(shape=M_SHAPE)
         for row in range(len(self.Mv)):
             for col in range(len(self.Mv[row])):
+                if row > 0 and col > 0:
+                    continue
                 mag = abs(Bhi[row][col] - Blo[row][col])
                 self.Mv[row][col] = uniform(-mag, mag)
 
     def debug(self, base, Mg):
-        print("result\n": self.Mx.result)
-        print("norm\n", self.Mx.result / base)
-        print("ratio\n", self.Mx.result / Mg.result)
+        print("i\n", Evaluation.i)
+        print("pid\n", self.pid_me)
+        print("result\n", self.Mx.result)
+        print("r/b norm\n", self.Mx.result / base)
+        print("Gr\n", Mg.result)
+        print("r/Gr\n", self.Mx.result / Mg.result)
         print("M\n", self.Mx.M)
-        print("V\n", self.Mv.M)
+        print("V\n", self.Mv)
         print("G\n", Mg.M)
 
     def update_vel(self, r, c, Mg, w_i, w_l, w_g):
@@ -75,18 +86,19 @@ class Particle:
 
         self.Mv[r][c] = momentum + local_gravity + global_gravity
 
-    def minimize(self, Mg)
+    def minimize(self, Mg):
         if self.Mx < self.Mp:
             self.Mp = self.Mx
             if self.Mp < Mg:
                 Mg = self.Mp
 
-
 class Evaluation:
+    i = 0
     def __init__(self, M, result=None):
         self.M = M
         if result == None:
-            self.result = simulate(config=M)
+            self.result = simulate(M, "t" + str(self.i))
+            Evaluation.i += 1
         else:
             self.result = result
 
@@ -95,6 +107,9 @@ class Evaluation:
 
     def __lt__(self, other):
         return self.result < other.result
+    def debug(self):
+        print("result\n", self.result)
+        print("M\n", self.M)
 
 def simulate(M, trial):
     subset = ("" if IS_COMM else "no")+"comm_"+\
@@ -104,26 +119,32 @@ def simulate(M, trial):
         write_config(config_clone, M)
     copyfile('data/comms.config', 'data/' + subset + trial + ".config")
 
-    prog = "build/" + config + "bin/gg-engine"
+    prog = "build/" + subset + "bin/gg-engine"
     args = [str(SEED)]
+    print(prog, " ".join(args))
     system(prog + " " + " ".join(args))
 
     copyfile("data/comms.result", "data/" + subset + trial + ".result")
 
-    return result_metric(read_result(""))
+    with open ('data/comms.result', 'r') as result_clone:
+        return result_metric(read_result(result_clone))
 
 def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
-    particles = [None] * N_PARTICLES
-    Mg = Evaluation(np.zeros(shape=M_SHAPE))
-    Blo = -np.ones(shape=M_SHAPE)
-    Bhi = np.ones(shape=M_SHAPE)
+    particles = [] #[None] * n
+    base = Evaluation(np.zeros(shape=shape))
+    base.debug()
+    Mg = Evaluation(np.empty(0), float('inf'))
+    Blo = -np.ones(shape=shape)
+    Bhi = np.ones(shape=shape)
 
-    for p in particles:
+    for p in range(n):
         p = Particle(Blo, Bhi)
 
         # don't p.minimize() because all Mp == Mx
         if p.Mp < Mg:
             Mg = p.Mp
+        p.debug(base.result, Mg)
+        particles += [p]
 
     convergent = False
     enough_iter = False
@@ -132,49 +153,48 @@ def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
     while not (convergent or enough_iter):
         for p in particles:
             # accelerate / explore
-            for row in range(M_SHAPE[0]):
-                for col in range(M_SHAPE[1]):
+            for row in range(shape[0]):
+                for col in range(shape[1]):
+                    if row > 0 and col > 0:
+                        continue
                     p.update_vel(row, col, Mg, w_inertia, w_local, w_global)
 
             # integrate velocity
             p.Mx = Evaluation(p.Mv + p.Mx.M)
 
             # update minima
-            p.minimize(Mg)
-            p.debug()
+            #p.minimize(Mg)
+            if p.Mx < p.Mp:
+                p.Mp = p.Mx
+                if p.Mp < Mg:
+                    Mg = p.Mp
+            p.debug(base.result, Mg)
         enough_iter = i >= enough
+        i += 1
         convergent = False #.... TODO
 
     return (particles, convergent, enough_iter)
-
-#for each particle i = 1, ..., S do
-#   Initialize the particle's position with a uniformly distributed random vector: xi ~ U(blo, bup)
-#   Initialize the particle's best known position to its initial position: pi ← xi
-#   if f(pi) < f(g) then
-#       update the swarm's best known  position: g ← pi
-#   Initialize the particle's velocity: vi ~ U(- | bup - blo | , | bup-blo|)
-#while a termination criterion is not met do:
-#   for each particle i = 1, ..., S do
-#      for each dimension d = 1, ..., n do
-#         Pick random numbers: rp, rg ~ U(0, 1)
-#         Update the particle's velocity: vi, d ← ω vi, d + φp rp(pi, d - xi, d) + φg rg(gd - xi, d)
-#      Update the particle's position: xi ← xi + vi
-#      if f(xi) < f(pi) then
-#         Update the particle's best known position: pi ← xi
-#         if f(pi) < f(g) then
-#            Update the swarm's best known position: g ← pi
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="\
         Globally optimize via Particle-Swarms the linear communication model\n\
         for the Talking Hive project.\n")
-    parser.add_argument("n_particles", metavar="N_PARTICLES")
-    parser.add_argument("w_inertia", metavar="W_INERTIA")
-    parser.add_argument("w_local", metavar="W_LOCAL")
-    parser.add_argument("w_global", metavar="W_GLOBAL")
-    parser.add_argument("is_comm", metavar="IS_COMM")
-    parser.add_argument("is_render", metavar="IS_RENDER")
-    parser.add_argument("seed", metavar="SEED")
+    parser.add_argument("n_particles", type=int)
+    parser.add_argument("w_inertia", type=float)
+    parser.add_argument("w_local", type=float)
+    parser.add_argument("w_global", type=float)
+    parser.add_argument("is_comm", type=int)
+    parser.add_argument("is_render", type=int)
+    parser.add_argument("seed", type=int)
 
-    pass
+    args = parser.parse_args()
+
+    SEED = args.seed
+    IS_RENDER = bool(args.is_render)
+    IS_COMM = bool(args.is_comm)
+    W_LOCAL = args.w_local
+    W_GLOBAL = args.w_global
+    W_INERTIA = args.w_inertia
+    N_PARTICLES = args.n_particles
+
+    PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)

@@ -6,13 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/home/dalton/Documents/learn-comms/enginee/lib/stb_image.cpp
+/home/dalton/code/learn-comms/enginee/lib/stb_image.cpp
 stb_image.h
 -
 
-/home/dalton/Documents/learn-comms/enginee/lib/stb_image.h
+/home/dalton/code/learn-comms/enginee/lib/stb_image.h
 stb_image.h
-/home/dalton/Documents/learn-comms/enginee/lib/stb_image.h
+/home/dalton/code/learn-comms/enginee/lib/stb_image.h
 stdio.h
 -
 stdarg.h

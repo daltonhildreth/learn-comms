@@ -1,0 +1,24 @@
+#!/bin/bash
+
+cd build/
+cd comm_render/
+rm -rf ./*
+cmake ../../enginee
+make
+cd ..
+cd comm_norender/
+rm -rf ./*
+cmake ../../enginee -DNO_RENDER:BOOL=ON
+make
+cd ..
+cd nocomm_render/
+rm -rf ./*
+cmake ../../enginee -DNO_COMM:BOOL=ON
+make
+cd ..
+cd nocomm_norender/
+rm -rf ./*
+cmake ../../enginee -DNO_RENDER:BOOL=ON -DNO_COMM:BOOL=ON
+make
+cd ..
+cd ..

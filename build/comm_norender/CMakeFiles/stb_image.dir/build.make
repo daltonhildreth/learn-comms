@@ -43,10 +43,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/dalton/Documents/learn-comms/enginee
+CMAKE_SOURCE_DIR = /home/dalton/code/learn-comms/enginee
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/dalton/Documents/learn-comms/build/6/comm_norender
+CMAKE_BINARY_DIR = /home/dalton/code/learn-comms/build/comm_norender
 
 # Include any dependencies generated for this target.
 include CMakeFiles/stb_image.dir/depend.make
@@ -58,17 +58,17 @@ include CMakeFiles/stb_image.dir/progress.make
 include CMakeFiles/stb_image.dir/flags.make
 
 CMakeFiles/stb_image.dir/lib/stb_image.cpp.o: CMakeFiles/stb_image.dir/flags.make
-CMakeFiles/stb_image.dir/lib/stb_image.cpp.o: /home/dalton/Documents/learn-comms/enginee/lib/stb_image.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/dalton/Documents/learn-comms/build/6/comm_norender/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/stb_image.dir/lib/stb_image.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/stb_image.dir/lib/stb_image.cpp.o -c /home/dalton/Documents/learn-comms/enginee/lib/stb_image.cpp
+CMakeFiles/stb_image.dir/lib/stb_image.cpp.o: /home/dalton/code/learn-comms/enginee/lib/stb_image.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/dalton/code/learn-comms/build/comm_norender/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/stb_image.dir/lib/stb_image.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/stb_image.dir/lib/stb_image.cpp.o -c /home/dalton/code/learn-comms/enginee/lib/stb_image.cpp
 
 CMakeFiles/stb_image.dir/lib/stb_image.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/stb_image.dir/lib/stb_image.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/dalton/Documents/learn-comms/enginee/lib/stb_image.cpp > CMakeFiles/stb_image.dir/lib/stb_image.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/dalton/code/learn-comms/enginee/lib/stb_image.cpp > CMakeFiles/stb_image.dir/lib/stb_image.cpp.i
 
 CMakeFiles/stb_image.dir/lib/stb_image.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/stb_image.dir/lib/stb_image.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/dalton/Documents/learn-comms/enginee/lib/stb_image.cpp -o CMakeFiles/stb_image.dir/lib/stb_image.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/dalton/code/learn-comms/enginee/lib/stb_image.cpp -o CMakeFiles/stb_image.dir/lib/stb_image.cpp.s
 
 CMakeFiles/stb_image.dir/lib/stb_image.cpp.o.requires:
 
@@ -91,7 +91,7 @@ stb_image_EXTERNAL_OBJECTS =
 libstb_image.a: CMakeFiles/stb_image.dir/lib/stb_image.cpp.o
 libstb_image.a: CMakeFiles/stb_image.dir/build.make
 libstb_image.a: CMakeFiles/stb_image.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/dalton/Documents/learn-comms/build/6/comm_norender/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libstb_image.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/dalton/code/learn-comms/build/comm_norender/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libstb_image.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/stb_image.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/stb_image.dir/link.txt --verbose=$(VERBOSE)
 
@@ -109,6 +109,6 @@ CMakeFiles/stb_image.dir/clean:
 .PHONY : CMakeFiles/stb_image.dir/clean
 
 CMakeFiles/stb_image.dir/depend:
-	cd /home/dalton/Documents/learn-comms/build/6/comm_norender && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/dalton/Documents/learn-comms/enginee /home/dalton/Documents/learn-comms/enginee /home/dalton/Documents/learn-comms/build/6/comm_norender /home/dalton/Documents/learn-comms/build/6/comm_norender /home/dalton/Documents/learn-comms/build/6/comm_norender/CMakeFiles/stb_image.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/dalton/code/learn-comms/build/comm_norender && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/dalton/code/learn-comms/enginee /home/dalton/code/learn-comms/enginee /home/dalton/code/learn-comms/build/comm_norender /home/dalton/code/learn-comms/build/comm_norender /home/dalton/code/learn-comms/build/comm_norender/CMakeFiles/stb_image.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/stb_image.dir/depend
 

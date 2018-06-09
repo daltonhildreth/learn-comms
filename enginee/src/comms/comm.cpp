@@ -24,7 +24,6 @@ static void print_v3(glm::vec3 v, char c) {
 
 void init() {
     std::string config_file = std::string(DATA_DIR) + "/comms.config";
-    std::cout << config_file << "\n";
     std::string config_str = *read_file(config_file);
 
     std::stringstream ss(config_str);

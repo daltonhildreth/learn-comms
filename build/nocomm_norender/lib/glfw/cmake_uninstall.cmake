@@ -1,9 +1,9 @@
 
-if (NOT EXISTS "/home/dalton/Documents/learn-comms/build/6/nocomm_norender/lib/glfw/install_manifest.txt")
-  message(FATAL_ERROR "Cannot find install manifest: \"/home/dalton/Documents/learn-comms/build/6/nocomm_norender/lib/glfw/install_manifest.txt\"")
+if (NOT EXISTS "/home/dalton/code/learn-comms/build/nocomm_norender/lib/glfw/install_manifest.txt")
+  message(FATAL_ERROR "Cannot find install manifest: \"/home/dalton/code/learn-comms/build/nocomm_norender/lib/glfw/install_manifest.txt\"")
 endif()
 
-file(READ "/home/dalton/Documents/learn-comms/build/6/nocomm_norender/lib/glfw/install_manifest.txt" files)
+file(READ "/home/dalton/code/learn-comms/build/nocomm_norender/lib/glfw/install_manifest.txt" files)
 string(REGEX REPLACE "\n" ";" files "${files}")
 
 foreach (file ${files})
