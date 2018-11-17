@@ -1,24 +1,34 @@
 #!/bin/bash
 
-cd build/
-cd comm_render/
-rm -rf ./*
-cmake ../../enginee
-make
-cd ..
-cd comm_norender/
-rm -rf ./*
-cmake ../../enginee -DNO_RENDER:BOOL=ON
-make
-cd ..
-cd nocomm_render/
-rm -rf ./*
-cmake ../../enginee -DNO_COMM:BOOL=ON
-make
-cd ..
-cd nocomm_norender/
-rm -rf ./*
-cmake ../../enginee -DNO_RENDER:BOOL=ON -DNO_COMM:BOOL=ON
-make
-cd ..
-cd ..
+cd build/comm_render/
+if $?; then
+    rm -rf ./*
+    cmake ../../enginee
+    make
+    cd ../..
+fi 
+
+cd build/comm_norender/
+if $?; then
+    rm -rf ./*
+    cmake ../../enginee -DNO_RENDER:BOOL=ON
+    make
+    cd ../..
+fi 
+
+cd build/nocomm_render/
+if $?; then
+    rm -rf ./*
+    cmake ../../enginee -DNOCOMM:BOOL=ON
+    make
+    cd ../..
+fi
+
+cd build/nocomm_norender/
+if $?; then
+    rm -rf ./*
+    cmake ../../enginee -DNOCOMM:BOOL=ON -DNO_RENDER:BOOL=ON
+    make
+    cd ../..
+fi
+
