@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(gg-engine)
+project(learn-comms-gg-engine)
 
 option(GLFW_BUILD_DOCS OFF)
 option(GLFW_BUILD_EXAMPLES OFF)
@@ -47,13 +47,6 @@ add_definitions(
 )
 
 add_definitions(-DSTOP_COLLISION)
-add_definitions(-DSCENE_N=5)
-if (NO_COMM)
-    add_definitions(-DNO_COMM)
-endif()
-if (NO_RENDER)
-    add_definitions(-DNO_RENDER)
-endif()
 add_definitions(-DDATA_DIR=\"${PROJECT_SOURCE_DIR}/..\"\"/data\")
 add_definitions(-DPRE_R=\"\")#"\no\"
 #add_definitions(-DPRM_DEBUG)
@@ -97,19 +90,47 @@ endif()
 add_library(glad ${PROJECT_SOURCE_DIR}/lib/glad/glad.c)
 add_library(stb_image ${PROJECT_SOURCE_DIR}/lib/stb_image.cpp)
 
-add_executable(${PROJECT_NAME} ${PROJECT_SRC} ${PROJECT_LIB})
+add_executable(${PROJECT_NAME}_comm_render ${PROJECT_SRC} ${PROJECT_LIB})
+
+add_definitions(-DNO_RENDER)
+add_executable(${PROJECT_NAME}_comm_norender ${PROJECT_SRC} ${PROJECT_LIB})
+
+add_definitions(-DNO_COMM)
+add_executable(${PROJECT_NAME}_nocomm_norender ${PROJECT_SRC} ${PROJECT_LIB})
+
+remove_definitions(-DNO_RENDER)
+add_executable(${PROJECT_NAME}_nocomm_render ${PROJECT_SRC} ${PROJECT_LIB})
 
 target_link_libraries(
     ${PROJECT_NAME}_nocomm_norender
     glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
 )
-
-set_property(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME}
+target_link_libraries(
+    ${PROJECT_NAME}_nocomm_render
+    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
+)
+target_link_libraries(
+    ${PROJECT_NAME}_comm_norender
+    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
+)
+target_link_libraries(
+    ${PROJECT_NAME}_comm_render
+    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
 )
 
 set_target_properties(
-    ${PROJECT_NAME} PROPERTIES
+    ${PROJECT_NAME}_nocomm_norender PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+set_target_properties(
+    ${PROJECT_NAME}_nocomm_render PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+set_target_properties(
+    ${PROJECT_NAME}_comm_norender PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+set_target_properties(
+    ${PROJECT_NAME}_comm_render PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
