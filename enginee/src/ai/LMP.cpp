@@ -282,5 +282,5 @@ glm::vec2 LMP::calc_sum_force(
     }
     */
 
-    return goal_F;// + ttc_F;
+    return goal_F + ttc_F;
 }
