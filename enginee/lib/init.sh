@@ -46,9 +46,6 @@ cd glm
 git reset --hard d214fbaaf1bebee952f9949ab9c649d02ca00552 &> /dev/null
 cd ..
 printf "%15s\n" "Done."
-printf "%-45s" "Downloading latest version of assimp..."
-git clone --depth=1 https://github.com/assimp/assimp.git &> /dev/null
-printf "%15s\n" "Done."
 
 #Refresh stb_image*
 printf "%-45s" "Downloading latest version of stb_image.h..."
