@@ -107,7 +107,7 @@ static float set_wall_scale() {
     }
 }
 
-constexpr void set_goal_scene(glm::vec2 &goal, glm::vec2 pos) {
+static void set_goal_scene(glm::vec2 &goal, glm::vec2 pos) {
     switch (SCENE) {
     case 0:
     case 1:
