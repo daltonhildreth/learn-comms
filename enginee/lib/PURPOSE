@@ -1,0 +1,4 @@
+Here lies any source to be compiled and include directories for third-party
+libraries. Since I have typically been static linking, there is no directory
+for binaries/shared objects, however, at some point this may be more efficient.
+Particularly if I write an advanced CMake file to search for pre-existing bins.
