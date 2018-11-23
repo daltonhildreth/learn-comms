@@ -1,19 +1,7 @@
-cmake_minimum_required(VERSION 3.5)
-project(learn-comms-gg-engine)
-
 option(GLFW_BUILD_DOCS OFF)
 option(GLFW_BUILD_EXAMPLES OFF)
 option(GLFW_BUILD_TESTS OFF)
 add_subdirectory(lib/glfw)
-
-include_directories(src/)
-include_directories(SYSTEM
-#    lib/assimp/include/
-    lib/glad/
-    lib/glfw/include/
-    lib/glm/
-    lib/
-)
 
 file(GLOB_RECURSE PROJECT_SRC
     src/*.c
@@ -43,12 +31,12 @@ source_group("lib" FILES ${PROJECT_LIB})
 
 add_definitions(
     -DGLFW_INCLUDE_NONE
-    -DPROJECT_SRC_DIR=\"${PROJECT_SOURCE_DIR}\"
+    -DPROJECT_SRC_DIR="${PROJECT_SOURCE_DIR}/enginee/"
 )
 
 add_definitions(-DSTOP_COLLISION)
-add_definitions(-DDATA_DIR=\"${PROJECT_SOURCE_DIR}/..\"\"/data\")
-add_definitions(-DPRE_R=\"\")#"\no\"
+add_definitions(-DDATA_DIR="${PROJECT_SOURCE_DIR}/data/")
+add_definitions(-DPRE_R="")#"\no\"
 #add_definitions(-DPRM_DEBUG)
 
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
@@ -87,8 +75,10 @@ if(NOT WIN32)
 endif()
 
 #to avoid compiler warnings i seperately build these
-add_library(glad ${PROJECT_SOURCE_DIR}/lib/glad/glad.c)
-add_library(stb_image ${PROJECT_SOURCE_DIR}/lib/stb_image.cpp)
+add_library(glad ${PROJECT_SOURCE_DIR}/enginee/lib/glad/glad.c)
+target_include_directories(glad PUBLIC lib/glad/)
+add_library(stb_image ${PROJECT_SOURCE_DIR}/enginee/lib/stb_image.cpp)
+target_include_directories(stb_image PUBLIC lib/)
 
 add_executable(${PROJECT_NAME}_comm_render ${PROJECT_SRC} ${PROJECT_LIB})
 
@@ -133,4 +123,28 @@ set_target_properties(
 set_target_properties(
     ${PROJECT_NAME}_comm_render PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+target_include_directories(${PROJECT_NAME}_nocomm_norender PUBLIC src/)
+target_include_directories(
+    ${PROJECT_NAME}_nocomm_norender SYSTEM PUBLIC
+    lib/glad/ lib/glfw/include/ lib/glm/ lib/
+)
+
+target_include_directories(${PROJECT_NAME}_nocomm_render PUBLIC src/)
+target_include_directories(
+    ${PROJECT_NAME}_nocomm_render SYSTEM PUBLIC
+    lib/glad/ lib/glfw/include/ lib/glm/ lib/
+)
+
+target_include_directories(${PROJECT_NAME}_comm_norender PUBLIC src/)
+target_include_directories(
+    ${PROJECT_NAME}_comm_norender SYSTEM PUBLIC
+    lib/glad/ lib/glfw/include/ lib/glm/ lib/
+)
+
+target_include_directories(${PROJECT_NAME}_comm_render PUBLIC src/)
+target_include_directories(
+    ${PROJECT_NAME}_comm_render SYSTEM PUBLIC
+    lib/glad/ lib/glfw/include/ lib/glm/ lib/
 )
