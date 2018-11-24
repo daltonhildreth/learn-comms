@@ -69,9 +69,6 @@ constexpr static unsigned num_walls() {
 
 constexpr unsigned NUM_ROBOS = num_robos();
 constexpr unsigned NUM_WALLS = num_walls();
-constexpr float rot_s = 0;//sin(1.f/NUM_ROBOS * glm::pi<float>());
-constexpr float rot_c = 1;//cos(1.f/NUM_ROBOS * glm::pi<float>());
-constexpr float rot_robo[4] = {rot_c, -rot_s, rot_s, rot_c};
 
 static BoundVolume* set_wall_size(glm::vec2 pos) {
     switch (SCENE) {

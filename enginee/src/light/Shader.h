@@ -24,7 +24,7 @@ public:
     bool del(const std::string path);
     bool build();
     void use();
-    
+
     void set(std::string uniform, GLint);
     void set(std::string uniform, GLuint);
     void set(std::string, GLfloat);
@@ -39,11 +39,7 @@ private:
     GLint success;
 
     //parse for uniform types?
-#ifdef WIN32
     std::optional<GLint> check_uniform(std::string);
-#else
-    std::experimental::optional<GLint> check_uniform(std::string);
-#endif
     bool compile(GLenum type, const std::string& path);
     bool link();
 };

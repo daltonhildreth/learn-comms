@@ -6,6 +6,8 @@ Light::Light()
     _specular(glm::vec3(0, 0, 0)) {
 }
 
+Light::~Light() {}
+
 void Light::pass_to(Shader& shader, const std::string& id) {
     shader.use();
     shader.set(id + "color.ambient", _ambient);

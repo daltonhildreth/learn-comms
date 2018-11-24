@@ -9,7 +9,7 @@
 
 Camera::Camera()
     : _view(new Transform(nullptr)), _proj(glm::mat4()), _dirty(false)
-    , _fov(45.f), _aspect(4.f/3.f), _near(.1f), _far(100.f) {
+    , _fov(_def_fov), _aspect(_def_aspect), _near(_def_near), _far(_def_far) {
 }
 
 void Camera::fov(float fov) {
@@ -105,4 +105,3 @@ void Camera::apply_view(Shader& shader) {
     shader.set("view", _view->global_mat());
     shader.set("eye_pos", _pos);
 }
-

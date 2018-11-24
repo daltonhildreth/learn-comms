@@ -14,6 +14,8 @@ public:
     void diffuse(glm::vec3);
     glm::vec3 specular();
     void specular(glm::vec3);
+
+    virtual ~Light();
 protected:
     Light();
 
