@@ -42,34 +42,6 @@ add_definitions(-DPRE_R="")#"\no\"
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
     add_definitions(-DDEBUG)
 endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    #Do not use warnings in MSVC because they are typically != to gcc/clang's.
-    #Normally more warnings is always better, but I don't enforce Windows
-    #compatability enough to care about its warnings. :( Also, I don't have a
-    #clean way of ignoring warnings from /lib files.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0 /std:c++latest")
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    #alternate for clang & gcc: -Wall -Wextra -pedantic -std=c++17 -Werror
-    #Keep the following, though; it took forever to compile.
-    #TODO: fix strict overflow=5 warnings in release.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-        -Wall -Wextra -Wpedantic -std=c++17 -Werror -Wfatal-errors\
-        -Wold-style-cast -Wcast-align -Wcast-qual -Wuseless-cast \
-        -Wconversion -Wsign-conversion -Wsign-promo -Wsign-promo \
-        -Wdisabled-optimization -Wno-strict-overflow -Wabi \
-        -Wfloat-equal -Wlogical-op \
-        -Wmissing-declarations -Wmissing-include-dirs -Wundef \
-        -Wformat=2 -Wzero-as-null-pointer-constant -Wstrict-null-sentinel \
-        -Wredundant-decls -Wshadow -Wunused \
-        -Woverloaded-virtual -Wctor-dtor-privacy")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    # DUno the flags
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-        -Wall -Wextra -Wpedantic -std=c++17 -Werror")
-endif()
 if(NOT WIN32)
     set(DLLOAD dl)
 endif()
@@ -80,71 +52,56 @@ target_include_directories(glad PUBLIC lib/glad/)
 add_library(stb_image ${PROJECT_SOURCE_DIR}/enginee/lib/stb_image.cpp)
 target_include_directories(stb_image PUBLIC lib/)
 
-add_executable(${PROJECT_NAME}_comm_render ${PROJECT_SRC} ${PROJECT_LIB})
+foreach(CONFIG nocomm_norender nocomm_render comm_norender comm_render)
+    add_executable(${CONFIG} ${PROJECT_SRC} ${PROJECT_LIB})
+    target_link_libraries(${CONFIG} glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD})
 
-add_definitions(-DNO_RENDER)
-add_executable(${PROJECT_NAME}_comm_norender ${PROJECT_SRC} ${PROJECT_LIB})
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        #Do not use warnings in MSVC because they are typically != to gcc/clang's.
+        #Normally more warnings is always better, but I don't enforce Windows
+        #compatability enough to care about its warnings. :( Also, I don't have a
+        #clean way of ignoring warnings from /lib files.
+        target_compile_options(${CONFIG} PUBLIC /W0 /std:c++latest)
+        target_compile_definitions(${CONFIG} PUBLIC _CRT_SECURE_NO_WARNINGS)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        #alternate for clang & gcc: -Wall -Wextra -pedantic -std=c++17 -Werror
+        #Keep the following, though; it took forever to compile.
+        #TODO: fix strict overflow=5 warnings in release.
+        target_compile_options(
+            ${CONFIG}
+            PUBLIC
+            -Wall -Wextra -Wpedantic -std=c++17 -Werror -Wfatal-errors
+            -Wold-style-cast -Wcast-align -Wcast-qual -Wuseless-cast
+            -Wconversion -Wsign-conversion -Wsign-promo -Wsign-promo
+            -Wdisabled-optimization -Wno-strict-overflow -Wabi
+            -Wfloat-equal -Wlogical-op
+            -Wmissing-declarations -Wmissing-include-dirs -Wundef
+            -Wformat=2 -Wzero-as-null-pointer-constant -Wstrict-null-sentinel
+            -Wredundant-decls -Wshadow -Wunused
+            -Woverloaded-virtual -Wctor-dtor-privacy
+        )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+        #???
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(
+            ${CONFIG}
+            PUBLIC
+            -Wall -Wextra -Wpedantic -std=c++17 -Werror
+        )
+    endif()
 
-add_definitions(-DNO_COMM)
-add_executable(${PROJECT_NAME}_nocomm_norender ${PROJECT_SRC} ${PROJECT_LIB})
+    set_target_properties(
+        ${CONFIG} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+   N)
+    target_include_directories(${CONFIG} PUBLIC src/)
+    target_include_directories(
+        ${CONFIG}
+        SYSTEM PUBLIC
+        lib/glad/ lib/glfw/include/ lib/glm/ lib/
+    )
+endforeach(CONFIG)
 
-remove_definitions(-DNO_RENDER)
-add_executable(${PROJECT_NAME}_nocomm_render ${PROJECT_SRC} ${PROJECT_LIB})
-
-target_link_libraries(
-    ${PROJECT_NAME}_nocomm_norender
-    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
-)
-target_link_libraries(
-    ${PROJECT_NAME}_nocomm_render
-    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
-)
-target_link_libraries(
-    ${PROJECT_NAME}_comm_norender
-    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
-)
-target_link_libraries(
-    ${PROJECT_NAME}_comm_render
-    glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD}
-)
-
-set_target_properties(
-    ${PROJECT_NAME}_nocomm_norender PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
-set_target_properties(
-    ${PROJECT_NAME}_nocomm_render PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
-set_target_properties(
-    ${PROJECT_NAME}_comm_norender PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
-set_target_properties(
-    ${PROJECT_NAME}_comm_render PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
-
-target_include_directories(${PROJECT_NAME}_nocomm_norender PUBLIC src/)
-target_include_directories(
-    ${PROJECT_NAME}_nocomm_norender SYSTEM PUBLIC
-    lib/glad/ lib/glfw/include/ lib/glm/ lib/
-)
-
-target_include_directories(${PROJECT_NAME}_nocomm_render PUBLIC src/)
-target_include_directories(
-    ${PROJECT_NAME}_nocomm_render SYSTEM PUBLIC
-    lib/glad/ lib/glfw/include/ lib/glm/ lib/
-)
-
-target_include_directories(${PROJECT_NAME}_comm_norender PUBLIC src/)
-target_include_directories(
-    ${PROJECT_NAME}_comm_norender SYSTEM PUBLIC
-    lib/glad/ lib/glfw/include/ lib/glm/ lib/
-)
-
-target_include_directories(${PROJECT_NAME}_comm_render PUBLIC src/)
-target_include_directories(
-    ${PROJECT_NAME}_comm_render SYSTEM PUBLIC
-    lib/glad/ lib/glfw/include/ lib/glm/ lib/
-)
+target_compile_definitions(nocomm_norender PUBLIC NO_COMM NO_RENDER)
+target_compile_definitions(nocomm_render PUBLIC NO_COMM)
+target_compile_definitions(comm_norender PUBLIC NO_RENDER)
