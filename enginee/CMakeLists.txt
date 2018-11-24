@@ -54,7 +54,7 @@ target_include_directories(stb_image PUBLIC lib/)
 
 foreach(CONFIG nocomm_norender nocomm_render comm_norender comm_render)
     add_executable(${CONFIG} ${PROJECT_SRC} ${PROJECT_LIB})
-    target_link_libraries(${CONFIG} glad stb_image glfw ${GLFW_LIBRARIES} ${DLLOAD})
+    target_link_libraries(${CONFIG} glad stb_image glfw ${DLLOAD})
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         #Do not use warnings in MSVC because they are typically != to gcc/clang's.
@@ -93,7 +93,7 @@ foreach(CONFIG nocomm_norender nocomm_render comm_norender comm_render)
     set_target_properties(
         ${CONFIG} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-   N)
+    )
     target_include_directories(${CONFIG} PUBLIC src/)
     target_include_directories(
         ${CONFIG}

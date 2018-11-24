@@ -7,9 +7,6 @@
 #include "../util/debug.h"
 
 using namespace std;
-#ifndef WIN32
-using namespace std::experimental;
-#endif
 
 Shader::Shader()
     : program(0)
@@ -74,7 +71,7 @@ bool Shader::compile(GLenum type, const string& path) {
     glGetShaderiv(shader_object, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(shader_object, 512, nullptr, info_log);
-        cerr << "gg! Shader (" << path << ") failed to compile:\n" 
+        cerr << "gg! Shader (" << path << ") failed to compile:\n"
              << info_log << "\n";
     }
     shader_objects.push_back(make_pair(shader_object, path));
@@ -96,15 +93,15 @@ bool Shader::link() {
     return success;
 }
 
-std::experimental::optional<GLint> Shader::check_uniform(string uniform) {
+std::optional<GLint> Shader::check_uniform(string uniform) {
     if (uniform.substr(3) == "gl_") {
         cerr << "gg! Shaders cannot use gl_ before uniforms " << uniform << "\n";
-        return std::experimental::nullopt;
+        return std::nullopt;
     }
     GLint loc = glGetUniformLocation(program, uniform.c_str());
     if (loc == -1) {
         cerr << "gg! Shaders do not contain uniform " << uniform << "\n";
-        return std::experimental::nullopt;
+        return std::nullopt;
     }
     return loc;
 }
