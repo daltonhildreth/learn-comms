@@ -388,31 +388,30 @@ static void update_runs(float time) {
 }
 
 bool run(double dt, double time, unsigned frame_count) {
-    UNUSED(dt, time);
+    UNUSED(dt);
     bool all_done = true;
     int num_done = 0;
     static double last_s = 0;
-    POOL.for_<Agent>([&](Agent& ai, Entity& e) {
-        UNUSED(e);
+    POOL.for_<Agent>([&](Agent& ai, Entity&) {
         if (!ai.done()) {
             all_done = false;
         } else {
             ++num_done;
         }
     });
-    float fframes = static_cast<float>(frame_count);
-    if (time - last_s > 1) {
-        std::cout << "NUM DONE: " << num_done << std::flush;//\n;
-        std::cout << "FRAMES: " << fframes << "\n";
+    if (time - last_s >= 1) {
+        std::cout << "NUM DONE: " << num_done << "\n";
+        std::cout << "FRAMES: " << frame_count << "\n";
+        std::cout.flush();
         last_s = time;
     }
     for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
-         update_runs(fframes/60.f);
+         update_runs(time);
     }
-    if (fframes > 60.f * set_demo_length()) {
+    if (time > set_demo_length()) {
         POOL.for_<Agent>([&](Agent& ai, Entity&){
             if (!ai.done()) {
-                float finish_time = 2*glm::length(ai.final_goal - ai.start) + fframes/60.f;
+                float finish_time = 2*glm::length(ai.final_goal - ai.start) + time;
                 update_runs(finish_time);
             }
         });

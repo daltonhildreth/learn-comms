@@ -157,8 +157,9 @@ int main(int argc, char** argv) {
         }
 
         double total_time = frame_time - init_time;
+        UNUSED(total_time);
         //frame_time.delta_s()
-        all_done = demo::run(1.f/60.f, total_time, total_frames);
+        all_done = demo::run(1.f/60.f, total_frames/60.f, total_frames);
         #ifndef NO_RENDER
         glfwSetWindowShouldClose(window, all_done);
         #endif
