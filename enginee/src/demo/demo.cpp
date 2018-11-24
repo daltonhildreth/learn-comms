@@ -226,9 +226,15 @@ static float set_demo_length() {
     }
 }
 
+
 static void create_floor(Entity& e, vector<Texture> texs) {
+    #ifdef NO_RENDER
+    UNUSED(texs);
+    #endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
+    #ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
+    #endif
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(50.f);
     scale[1][1] = 1.f;
@@ -237,12 +243,19 @@ static void create_floor(Entity& e, vector<Texture> texs) {
     t.set_pos(glm::vec3(0, -1, 0));
 
     POOL.attach<Transform>(e, tid);
+    #ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
+    #endif
 }
 
 static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
+    #ifdef NO_RENDER
+    UNUSED(texs);
+    #endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
+    #ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
+    #endif
     uint16_t bvid = POOL.create<BoundVolume*>(set_wall_size(pos));
 
     Seeder s;
@@ -257,13 +270,20 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
 
     POOL.attach<Transform>(e, tid);
+    #ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
+    #endif
     POOL.attach<BoundVolume*>(e, bvid);
 }
 
 static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
+    #ifdef NO_RENDER
+    UNUSED(texs);
+    #endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
+    #ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
+    #endif
     uint16_t did = POOL.create<Dynamics>(Dynamics());
     uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, .3f, .3f));
     uint16_t aid = POOL.create<Agent>(Agent());
@@ -289,7 +309,9 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     c.facing = a.final_goal - glm::vec2(d.pos.x, d.pos.z);
 
     POOL.attach<Transform>(e, tid);
+    #ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
+    #endif
     POOL.attach<Dynamics>(e, did);
     POOL.attach<BoundVolume*>(e, bvid);
     POOL.attach<Agent>(e, aid);
@@ -303,11 +325,15 @@ void init() {
     vector<Texture> robo_tex = {
     };
     vector<Texture> floor_tex = {
+    #ifndef NO_RENDER
         {render::create_tex(pwd + "/res/stone.jpg"), Texmap::diffuse}
+    #endif
     };
     vector<Texture> wall_tex = {
+    #ifndef NO_RENDER
         {render::create_tex(pwd + "/res/container2.png"), Texmap::diffuse},
         {render::create_tex(pwd + "/res/container2_specular.png"), Texmap::specular}
+    #endif
     };
 
     Entity& floors = POOL.spawn_entity();
@@ -322,6 +348,7 @@ void init() {
         create_wall(POOL.spawn_entity(), wall_tex, set_walls_pos(i));
     }
 
+    #ifndef NO_RENDER
     {
         render::dir_lights.push_back(make_unique<DirLight>());
         render::dir_lights.back()->dir(glm::vec3(-1, -2, -1));
@@ -345,6 +372,7 @@ void init() {
             + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen())));
         render::point_lights.back()->specular(glm::vec3(.3f));
     }
+    #endif
 }
 
 float run_avg_time = 0;

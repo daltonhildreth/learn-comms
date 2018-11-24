@@ -41,6 +41,7 @@ void monitor_connect(GLFWmonitor*, int event);
 void keymap_input(GLFWwindow*);
 
 int main(int argc, char** argv) {
+    #ifndef NO_RENDER
     //Setup pre-init glfw
     glfwSetErrorCallback(glfw_error);
 
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
     }
 
     glViewport(0, 0, size.x, size.y);
+    #endif
 
     if (argc > 1) {
         Seeder s;
@@ -110,10 +112,10 @@ int main(int argc, char** argv) {
     #ifndef NO_COMM
     comm::init();
     #endif
-    ui::init_callbacks(window);
     ai::init();
     physics::init();
     #ifndef NO_RENDER
+    ui::init_callbacks(window);
     render::init(size);
     #endif
 
@@ -123,46 +125,66 @@ int main(int argc, char** argv) {
     unsigned total_frames = 0;
     unsigned fps = 0;
     auto last_s = init_time.time();
-    while (!glfwWindowShouldClose(window)) {
-        if (!ui::paused){
-            frame_time.tick();
-            ++total_frames;
-            //FPS recorder
-            if (1.f < frame_time - last_s) {
-                clog << "FPS: " << fps << "\n";
-                fps = 0;
-                last_s = frame_time.time();
-            } else {
-                ++fps;
-            }
-
-            double total_time = frame_time - init_time;
-            bool all_done = demo::run(1.f/60.f, total_time, total_frames);//frame_time.delta_s(),
-            glfwSetWindowShouldClose(window, all_done);
-            #ifndef NO_COMM
-            comm::run();
-            #endif
-            ////AI: iterates over agents, which often depend on boundvolumes, dynamics
-            //and transforms.
-            ai::update_agents();
-            ////Physics: iterates over dynamics, which often depend on boundvolumes,
-            //and transforms.
-            physics::simulate(1.f/60.f);//static_cast<float>(frame_time.delta_s()));
-            ////sync: currently some components have redundant information that
-            //needs to be synced every frame.
-            POOL.all_sync();
-            #ifndef NO_RENDER
-            ////Render: iterates over meshes, which often depend on transforms.
-            render::draw();
-            //double buffer
-            glfwSwapBuffers(window);
-            #endif
-        }
+    bool all_done = false;
+    while(
+        !all_done
+        #ifndef NO_RENDER
+        && !glfwWindowShouldClose(window)
+        #endif
+    ) {
+        #ifndef NO_RENDER
         ////UI: would iterate over controllers, but it just handles specific
         //entities for now
         glfwPollEvents();
         //input handling
         ui::handle_input(window, frame_time.delta_s());
+
+        if (ui::paused) {
+            continue;
+        }
+        #endif
+
+        frame_time.tick();
+        ++total_frames;
+
+        //FPS recorder
+        if (1.f <= frame_time - last_s) {
+            clog << "FPS: " << fps << "\n";
+            fps = 0;
+            last_s = frame_time.time();
+        } else {
+            ++fps;
+        }
+
+        double total_time = frame_time - init_time;
+        //frame_time.delta_s()
+        all_done = demo::run(1.f/60.f, total_time, total_frames);
+        #ifndef NO_RENDER
+        glfwSetWindowShouldClose(window, all_done);
+        #endif
+
+        #ifndef NO_COMM
+        comm::run();
+        #endif
+
+        ////AI: iterates over agents, which often depend on boundvolumes, dynamics
+        //and transforms.
+        ai::update_agents();
+
+        ////Physics: iterates over dynamics, which often depend on boundvolumes,
+        //and transforms.
+        physics::simulate(1.f/60.f);//static_cast<float>(frame_time.delta_s()));
+
+        ////sync: currently some components have redundant information that
+        //needs to be synced every frame.
+        POOL.all_sync();
+
+        #ifndef NO_RENDER
+        ////Render: iterates over meshes, which often depend on transforms.
+        render::draw();
+        //double buffer
+        glfwSwapBuffers(window);
+        #endif
     }
     //double total_time = static_cast<double>(total_frames)/60.0;//frame_time - init_time;
     double avg_velocity = physics::avg_velocity;
@@ -173,8 +195,10 @@ int main(int argc, char** argv) {
     results << avg_velocity << "\n" << group_time << "\n";
     results.close();
 
+    #ifndef NO_RENDER
     //free all memory and libraries
     glfwTerminate();
+    #endif
     return EXIT_SUCCESS;
 }
 
