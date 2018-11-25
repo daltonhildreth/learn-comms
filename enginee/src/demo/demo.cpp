@@ -204,6 +204,119 @@ static Scene make_scene(unsigned scn) {
             return glm::vec2(x, y);
         };
         break;
+
+    /*
+    //8: clogged doorway with 2 running in, and 2 escaping.
+    case 8:
+        s.num_robos = 4u;
+        s.num_walls = 30u;
+        s.wall_scale = 2.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //9: clogged doorway with 20 running in, and 20 escaping.
+    case 9:
+        s.num_robos = 40u;
+        s.num_walls = 30u;
+        s.wall_scale = 2.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //10: clogged doorway with 5 running in, and 35 escaping.
+    case 10:
+        s.num_robos = 40u;
+        s.num_walls = 30u;
+        s.wall_scale = 2.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //11: escaping room
+    case 11:
+        s.num_robos = 40u;
+        s.num_walls = 120u;
+        s.wall_scale = 2.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //12: crowd
+    case 12:
+        s.num_robos = 100u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //13: two tight formations of 20 aiming at each other down a tight hall
+    case 13:
+        s.num_robos = 40u;
+        s.num_walls = 30u;
+        s.wall_scale = 2.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //14: staggered 1 on 1
+    case 14:
+        s.num_robos = 2u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //15: staggered 1 on 2
+    case 15:
+        s.num_robos = 3u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //16: staggered 2 on 2
+    case 16:
+        s.num_robos = 4u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    //17: staggered equal 2 on equal 2
+    case 17:
+        s.num_robos = 4u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = ;
+        s.pos_of = ;
+        s.goal_of = ;
+        s.wall_shape_of = ;
+        s.wall_pos_of = ;
+        break;
+    */
     }
     return s;
 }
