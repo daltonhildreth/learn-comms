@@ -270,7 +270,9 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     uint16_t did = POOL.create<Dynamics>(Dynamics());
     uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, .3f, .3f));
     uint16_t aid = POOL.create<Agent>(Agent());
+    #ifndef NO_COMM
     uint16_t cid = POOL.create<CommComp>(CommComp());
+    #endif
 
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(.3f);
@@ -285,11 +287,13 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     auto& a = *POOL.get<Agent>(aid);
     a.final_goal = scn.goal_of(pos, 0);
 
+    #ifndef NO_COMM
     auto& c = *POOL.get<CommComp>(cid);
     c.c = 0;
     c.c_buf = 0;
     c.v_buf = glm::vec2(0);
     c.facing = a.final_goal - glm::vec2(d.pos.x, d.pos.z);
+    #endif
 
     POOL.attach<Transform>(e, tid);
     #ifndef NO_RENDER
@@ -397,12 +401,13 @@ bool run(double dt, double time, unsigned frame_count) {
         last_s = time;
     }
     for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
-         update_runs(time);
+         update_runs(static_cast<float>(time));
     }
     if (time > scn.max_duration) {
         POOL.for_<Agent>([&](Agent& ai, Entity&){
             if (!ai.done()) {
-                float finish_time = 2*glm::length(ai.final_goal - ai.start) + time;
+                float finish_time = 2*glm::length(ai.final_goal - ai.start)
+                    + static_cast<float>(time);
                 update_runs(finish_time);
             }
         });
