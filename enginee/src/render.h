@@ -16,6 +16,7 @@ class Mesh;
 class Camera;
 
 namespace render {
+extern float cam_dist;
 //currently going to do one shader for all meshes in the pool,
 //just because I don't have a better way right this moment that I've made.
 //There are many ways I have thought of though.

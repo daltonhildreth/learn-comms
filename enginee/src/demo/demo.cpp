@@ -17,215 +17,198 @@
 using namespace std;
 
 namespace demo {
-const int SCENE = 7;
-//0: circle radius 10; 30 agents; 30s
-//1: circle radius 20; 90 agents; 70s
-//2: circle radius 10; 30 agents; 40 .1m x .1m posts in radius 8; 40s
-//3: circle radius 10; 30 agents; 1 1m radius pillar at center; 60s
-//4: intersection 14 wide; 112 agents; 40s
-//5: intersection 14 wide; 112 agents; swapped goals (-pos); 70s
-//6: intersection 14 wide; 112 agents; curbed; 70s
+static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) {return -pos;}
+static glm::vec2 mirror_x_goal(glm::vec2 pos, unsigned) {return glm::vec2(-pos.x, pos.y);}
 
-//7: clogged doorway with 5 running in, and 25 escaping.
-
-template <typename T>
-int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
+static BoundVolume* null_shape(glm::vec2, unsigned) { return nullptr; }
+static auto make_square_shape(float sz) {
+    return [sz](glm::vec2 pos, unsigned) { return new Rect(pos, sz, sz); };
 }
 
-constexpr unsigned num_robos() {
-    switch (SCENE) {
-    case 0:
-    case 2:
-    case 3:
-    case 7:
-        return 60;
-    case 1:
-        return 60;
-    case 4:
-    case 5:
-    case 6:
-        return 56;
-    }
+static auto make_radial_bots(unsigned num, float radius) {
+    return [num, radius](unsigned i) {
+        float radian = static_cast<float>(i)/static_cast<float>(num)
+            * 2.f * glm::pi<float>();
+        return radius * glm::vec2(cos(radian), sin(radian));
+    };
 }
-
-constexpr static unsigned num_walls() {
-    switch (SCENE) {
-        case 0:
-        case 1:
-        case 4:
-        case 5:
-            return 0;
-        case 2:
-            return 60;
-        case 3:
-            return 1;
-        case 6:
-            return 13;
-        case 7:
-            return 30;
-    }
-}
-
-constexpr unsigned NUM_ROBOS = num_robos();
-constexpr unsigned NUM_WALLS = num_walls();
-
-static BoundVolume* set_wall_size(glm::vec2 pos) {
-    switch (SCENE) {
-    case 0:
-    case 1:
-    case 4:
-    case 5:
-        return nullptr;
-    case 2:
-        return new Rect(pos, .1f, .1f);
-    case 3:
-        return new Rect(pos, 4.f, 4.f);
-    case 6:
-    case 7:
-        return new Rect(pos, 2.f, 2.f);
-    }
-}
-
-static float set_wall_scale() {
-    switch (SCENE) {
-    case 0:
-    case 1:
-    case 4:
-    case 5:
-        return 0;
-    case 2:
-        return .1f;
-    case 3:
-        return 4.f;
-    case 6:
-    case 7:
-        return 2.f;
-    }
-}
-
-static void set_goal_scene(glm::vec2 &goal, glm::vec2 pos) {
-    switch (SCENE) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 5: {
-        goal = -glm::vec2(pos.x, pos.y);
-        break;
-    }
-    case 4:
-    case 6: {
-        int axis = sgn<float>(abs(pos.x) - abs(pos.y));
-        axis = (axis == 0 ? 1 : axis);
-        float faxis = static_cast<float>(axis);
-        goal = glm::vec2(-faxis * pos.x, faxis * pos.y);
-        break;
-    }
-    case 7: {
-        goal = glm::vec2(-pos.x, pos.y);
-        break;
-    }
-    }
-}
-
-static glm::vec2 agents_pos(unsigned i) {
-    float rad = static_cast<float>(i)/static_cast<float>(NUM_ROBOS)
-        * (2.f * glm::pi<float>());
-    switch (SCENE) {
-    case 0:
-    case 2:
-    case 3:
-        return 10.f * glm::vec2(cos(rad), sin(rad));
-    case 1:
-        return 20.f * glm::vec2(cos(rad), sin(rad));
-    case 4:
-    case 5:
-    case 6: {
+static auto make_intersecting_bots(unsigned num, unsigned row_sz) {
+    return [num, row_sz](unsigned i) {
         float side = (i%2 ? -1 : 1);
-        unsigned k = (i-i%2) / 14;
-        if (i >= NUM_ROBOS/2) {
-            k = (i - i%2 - NUM_ROBOS/2) / 14;
+        unsigned k = (i-i%2) / row_sz;
+        unsigned half = num / 2;
+        if (i >= half) {
+            k = (i - i%2 - half) / row_sz;
         }
-        unsigned j = (i-i%2) % 14;
-        float x = side * (static_cast<float>(k) + 7);
+        unsigned j = (i-i%2) % row_sz;
+        float x = side * (static_cast<float>(k) + static_cast<float>(row_sz/2));
         float y = static_cast<float>(j)/2.f - 3;
-        if (i >= NUM_ROBOS/2) {
+        if (i >= half) {
             float t = x;
             x = y;
             y = t;
         }
         return glm::vec2(x, y);
-    }
-    case 7: {
-        unsigned col = i % 5;
-        unsigned row = i / 5;
-        float side = (row < 1 ? -3.f : 3.f);
-        float x = static_cast<float>(row) * 1.f + side;
-        float y = static_cast<float>(col) * 1.f - 2.f;
-        return glm::vec2(x, y);
-    }
-    }
+    };
 }
 
-static glm::vec2 set_walls_pos(unsigned i) {
-    switch (SCENE) {
-    case 0:
-    case 1:
-    case 4:
-    case 5: {
-        return glm::vec2(1000.f);
-    }
-    case 2: {
-        Seeder s;
-        typedef uniform_real_distribution<float> UFD;
-        UFD map(-7.f, 7.f);
-        return glm::vec2(map(s.gen()), map(s.gen()));
-    }
-    case 3:
-        return glm::vec2(0.f);
-    case 6:
-        switch (i) {
-        case 0: return glm::vec2(-3.f, -3.f);
-        case 11: return glm::vec2(-4.f, -4.f);
-        case 12: return glm::vec2(-6.f, -5.f);
+static glm::vec2 ignore_wall(unsigned) { return glm::vec2(1000.0f); }
 
-        case 1: return glm::vec2(-3.f, 3.f);
-        case 9: return glm::vec2(-4.f, 4.f);
-        case 10: return glm::vec2(-6.f, 5.f);
+template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
-        case 2: return glm::vec2(3.f, -3.f);
-        case 6: return glm::vec2(4.f, -4.f);
-        case 7: return glm::vec2(6.f, -5.f);
+struct Scene {
+    unsigned num_robos;
+    unsigned num_walls = 0u;
+    float wall_scale = 0.f;
+    float max_duration;
+    float cam_dist = 1.f;
+    std::function<glm::vec2(unsigned)> pos_of;
+    std::function<glm::vec2(glm::vec2, unsigned)> goal_of;
+    std::function<BoundVolume*(glm::vec2, unsigned)> wall_shape_of = null_shape;
+    std::function<glm::vec2(unsigned)> wall_pos_of = ignore_wall;
+};
 
-        case 3: return glm::vec2(3.f, 3.f);
-        case 4: return glm::vec2(4.f, 4.f);
-        case 8: return glm::vec2(6.f, 5.f);
-        }
-    case 7:
-        float x = 0;
-        float y = 2 * (static_cast<float>(i) - 15) + 1.f * (i > 14);
-        return glm::vec2(x, y);
+static Scene make_scene(unsigned scn) {
+    Scene s;
+
+    switch(scn) {
+    case 0: // circle radius 10; 30 agents; 30s
+        s.num_robos = 60u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = 30.f;
+        s.pos_of = make_radial_bots(s.num_robos, 10.f);
+        s.goal_of = opposite_goal;
+        s.wall_shape_of = null_shape;
+        s.wall_pos_of = ignore_wall;
+        break;
+
+    case 1: // circle radius 20; 90 agents 70s
+        s.num_robos = 60u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = 70.f;
+        s.cam_dist = 2.f;
+        s.pos_of = make_radial_bots(s.num_robos, 20.f);
+        s.goal_of = opposite_goal;
+        s.wall_shape_of = null_shape;
+        s.wall_pos_of = ignore_wall;
+        break;
+
+    case 2: // circle radius 10; 30 agent; 40 .1x.1m posts in radius 8; 40 s
+        s.num_robos = 60u;
+        s.num_walls = 60u;
+        s.wall_scale = 0.1f;
+        s.max_duration = 40.f;
+        s.pos_of = make_radial_bots(s.num_robos, 10.f);
+        s.goal_of = opposite_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned) {
+            Seeder seed;
+            uniform_real_distribution<float> map(-7.f, 7.f);
+            return glm::vec2(map(seed.gen()), map(seed.gen()));
+        };
+        break;
+
+    case 3: // circle radius 10; 30 agents 1 2m radius pillar at center; 60s
+        s.num_robos = 60u;
+        s.num_walls = 3u;
+        s.wall_scale = 4.0f;
+        s.max_duration = 40.f;
+        s.pos_of = make_radial_bots(s.num_robos, 10.f);
+        s.goal_of = opposite_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned) { return glm::vec2(0.f); };
+        break;
+
+    case 4: // interesection 14 wide; 112 agents; 40s
+        s.num_robos = 56u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = 40.f;
+        s.cam_dist = 1.2f;
+        s.pos_of = make_intersecting_bots(s.num_robos, 14);
+        s.goal_of = [](glm::vec2 pos, unsigned) -> glm::vec2 {
+            int axis = sgn<float>(abs(pos.x) - abs(pos.y));
+            axis = (axis == 0 ? 1 : axis);
+            float faxis = static_cast<float>(axis);
+            return glm::vec2(-faxis * pos.x, faxis * pos.y);
+        };
+        s.wall_shape_of = null_shape;
+        s.wall_pos_of = ignore_wall;
+        break;
+
+    case 5: // interesection 14 wide; 112 agents; swapped goals; 70s
+        s.num_robos = 56u;
+        s.num_walls = 0u;
+        s.wall_scale = 0.0f;
+        s.max_duration = 70.f;
+        s.cam_dist = 1.2f;
+        s.pos_of = make_intersecting_bots(s.num_robos, 14);
+        s.goal_of = opposite_goal;
+        s.wall_shape_of = null_shape;
+        s.wall_pos_of = ignore_wall;
+        break;
+
+    case 6: //intersection 14 wide; 112 agents; curbed; 70s
+        s.num_robos = 56u;
+        s.num_walls = 12u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 40.f;
+        s.cam_dist = 1.2f;
+        s.pos_of = make_intersecting_bots(s.num_robos, 14);
+        s.goal_of = [](glm::vec2 pos, unsigned) -> glm::vec2 {
+            int axis = sgn<float>(abs(pos.x) - abs(pos.y));
+            axis = (axis == 0 ? 1 : axis);
+            float faxis = static_cast<float>(axis);
+            return glm::vec2(-faxis * pos.x, faxis * pos.y);
+        };
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned i) {
+            switch (i) {
+            case 0:  return glm::vec2(-3.f, -3.f); // wall 1
+            case 10: return glm::vec2(-4.f, -4.f);
+            case 11: return glm::vec2(-6.f, -5.f);
+            case 1:  return glm::vec2(-3.f,  3.f); // wall 2
+            case 8:  return glm::vec2(-4.f,  4.f);
+            case 9:  return glm::vec2(-6.f,  5.f);
+            case 2:  return glm::vec2( 3.f, -3.f); // wall 3
+            case 5:  return glm::vec2( 4.f, -4.f);
+            case 6:  return glm::vec2( 6.f, -5.f);
+            case 3:  return glm::vec2( 3.f,  3.f); // wall 4
+            case 4:  return glm::vec2( 4.f,  4.f);
+            case 7:  return glm::vec2( 6.f,  5.f);
+            default: assert(false);
+            }
+        };
+        break;
+
+    case 7: // clogged doorway with 1 each way
+        s.num_robos = 2u;
+        s.num_walls = 30u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 70.f;
+        s.pos_of = [](unsigned i) {
+            unsigned col = i % 5;
+            unsigned row = i / 5;
+            float side = (row < 1 ? -3.f : 3.f);
+            float x = static_cast<float>(row) * 1.f + side;
+            float y = static_cast<float>(col) * 1.f - 2.f;
+            return glm::vec2(x, y);
+        };
+        s.goal_of = mirror_x_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned i) {
+            float x = 0;
+            float y = 2 * (static_cast<float>(i) - 15) + 1.f * (i > 14);
+            return glm::vec2(x, y);
+        };
+        break;
     }
-    return glm::vec2(1000.f);
+    return s;
 }
 
-static float set_demo_length() {
-    switch (SCENE) {
-    case 0:
-        return 30.f;
-    case 2:
-    case 3:
-    case 4:
-    case 6:
-        return 40.f;
-    case 1:
-    case 5:
-    case 7:
-        return 70.f;
-    }
-}
-
+Scene scn;
 
 static void create_floor(Entity& e, vector<Texture> texs) {
     #ifdef NO_RENDER
@@ -256,14 +239,14 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     #ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
     #endif
-    uint16_t bvid = POOL.create<BoundVolume*>(set_wall_size(pos));
+    uint16_t bvid = POOL.create<BoundVolume*>(scn.wall_shape_of(pos, 0));
 
     Seeder s;
     typedef uniform_real_distribution<float> UFD;
     UFD tall(1.f, 3.f);
 
     auto& t = *POOL.get<Transform>(tid);
-    glm::mat4 scale(set_wall_scale());
+    glm::mat4 scale(scn.wall_scale);
     scale[1][1] = tall(s.gen());
     scale[3][3] = 1.f;
     t.set_mat(scale);
@@ -300,7 +283,7 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     d.mass = 1.f;
 
     auto& a = *POOL.get<Agent>(aid);
-    set_goal_scene(a.final_goal, pos);
+    a.final_goal = scn.goal_of(pos, 0);
 
     auto& c = *POOL.get<CommComp>(cid);
     c.c = 0;
@@ -315,11 +298,17 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     POOL.attach<Dynamics>(e, did);
     POOL.attach<BoundVolume*>(e, bvid);
     POOL.attach<Agent>(e, aid);
+    #ifndef NO_COMM
     POOL.attach<CommComp>(e, cid);
+    #endif
 }
 
-void init() {
+
+void init(unsigned scn_i) {
     string pwd(PROJECT_SRC_DIR);
+
+    scn = make_scene(scn_i);
+
     //so, normally I'd only want one mesh shared amongst many entities, but the
     //renderer does a for_<Mesh> so I can't do that.
     vector<Texture> robo_tex = {
@@ -339,13 +328,13 @@ void init() {
     Entity& floors = POOL.spawn_entity();
     create_floor(floors, floor_tex);
 
-    for (unsigned i = 0; i < NUM_ROBOS; ++i) {
-        create_robo(POOL.spawn_entity(), robo_tex, agents_pos(i));
+    for (unsigned i = 0; i < scn.num_robos; ++i) {
+        create_robo(POOL.spawn_entity(), robo_tex, scn.pos_of(i));
     }
 
     #pragma GCC diagnostic ignored "-Wtype-limits"
-    for (unsigned i = 0; i < NUM_WALLS; ++i) {
-        create_wall(POOL.spawn_entity(), wall_tex, set_walls_pos(i));
+    for (unsigned i = 0; i < scn.num_walls; ++i) {
+        create_wall(POOL.spawn_entity(), wall_tex, scn.wall_pos_of(i));
     }
 
     #ifndef NO_RENDER
@@ -372,6 +361,8 @@ void init() {
             + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen())));
         render::point_lights.back()->specular(glm::vec3(.3f));
     }
+
+    render::cam_dist = scn.cam_dist;
     #endif
 }
 
@@ -408,7 +399,7 @@ bool run(double dt, double time, unsigned frame_count) {
     for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
          update_runs(time);
     }
-    if (time > set_demo_length()) {
+    if (time > scn.max_duration) {
         POOL.for_<Agent>([&](Agent& ai, Entity&){
             if (!ai.done()) {
                 float finish_time = 2*glm::length(ai.final_goal - ai.start) + time;

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstdint>
+#include <string>
 
 #include "util/Timer.h"
 #include "render.h"
@@ -103,12 +104,27 @@ int main(int argc, char** argv) {
     glViewport(0, 0, size.x, size.y);
     #endif
 
-    if (argc > 1) {
+    if (argc > 2) {
         Seeder s;
-        s.seed(std::stoull(argv[1]));
+        s.seed(std::stoull(argv[2]));
     }
     Seeder s;
-    demo::init();
+    if (argc == 1) {
+        cerr << "gg! Failed to create demo.\n";
+        #ifndef NO_RENDER
+        glfwTerminate();
+        #endif
+        return EXIT_FAILURE;
+    }
+    int scn_i = std::stoi(argv[1]);
+    if (scn_i < 0) {
+        cerr << "gg! Invalid demo ID.\n";
+        #ifndef NO_RENDER
+        glfwTerminate();
+        #endif
+        return EXIT_FAILURE;
+    }
+    demo::init(static_cast<unsigned>(scn_i));
     #ifndef NO_COMM
     comm::init();
     #endif

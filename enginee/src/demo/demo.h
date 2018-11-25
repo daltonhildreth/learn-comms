@@ -2,7 +2,7 @@
 #define DEMO_H
 
 namespace demo {
-void init();
+void init(unsigned scn_i);
 bool run(double dt, double time, unsigned frame_count);
 
 extern float run_avg_time;
