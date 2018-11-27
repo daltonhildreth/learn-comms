@@ -119,25 +119,17 @@ static Scene make_scene(unsigned scn) {
     switch(scn) {
     case 0: // circle radius 10; 30 agents; 30s
         s.num_robos = 60u;
-        s.num_walls = 0u;
-        s.wall_scale = 0.0f;
         s.max_duration = 30.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
-        s.wall_shape_of = null_shape;
-        s.wall_pos_of = ignore_wall;
         break;
 
     case 1: // circle radius 20; 90 agents 70s
         s.num_robos = 60u;
-        s.num_walls = 0u;
-        s.wall_scale = 0.0f;
         s.max_duration = 70.f;
         s.cam_dist = 2.f;
         s.pos_of = make_radial_bots(s.num_robos, 20.f);
         s.goal_of = opposite_goal;
-        s.wall_shape_of = null_shape;
-        s.wall_pos_of = ignore_wall;
         break;
 
     case 2: // circle radius 10; 30 agent; 40 .1x.1m posts in radius 8; 40 s
@@ -168,26 +160,18 @@ static Scene make_scene(unsigned scn) {
 
     case 4: // interesection 14 wide; 112 agents; 40s
         s.num_robos = 56u;
-        s.num_walls = 0u;
-        s.wall_scale = 0.0f;
         s.max_duration = 40.f;
         s.cam_dist = 1.2f;
         s.pos_of = make_intersecting_bots(s.num_robos/4, 7, 6.f);
         s.goal_of = axial_goal;
-        s.wall_shape_of = null_shape;
-        s.wall_pos_of = ignore_wall;
         break;
 
     case 5: // interesection 14 wide; 112 agents; swapped goals; 70s
         s.num_robos = 56u;
-        s.num_walls = 0u;
-        s.wall_scale = 0.0f;
         s.max_duration = 70.f;
         s.cam_dist = 1.2f;
         s.pos_of = make_intersecting_bots(s.num_robos/4, 7, 6.f);
         s.goal_of = opposite_goal;
-        s.wall_shape_of = null_shape;
-        s.wall_pos_of = ignore_wall;
         break;
 
     case 6: //intersection 14 wide; 112 agents; curbed; 70s
@@ -316,7 +300,6 @@ static Scene make_scene(unsigned scn) {
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
-        s.wall_scale = 0.0f;
         s.max_duration = 30.f;
         s.pos_of = [](unsigned i) {
             return (i==0 ? glm::vec2(-5.f, .1f) : glm::vec2(3.f, 0));
@@ -326,7 +309,6 @@ static Scene make_scene(unsigned scn) {
 
     case 15:  // staggered 1 on 2
         s.num_robos = 3u;
-        s.wall_scale = 0.0f;
         s.max_duration = 40.f;
         s.pos_of = [](unsigned i) {
             switch (i) {
@@ -341,7 +323,6 @@ static Scene make_scene(unsigned scn) {
 
     case 16: // staggered 2 on 2
         s.num_robos = 4u;
-        s.wall_scale = 0.0f;
         s.max_duration = 40.f;
         s.pos_of = [](unsigned i) {
             switch (i) {
@@ -357,7 +338,6 @@ static Scene make_scene(unsigned scn) {
 
     case 17: { // staggered equal 2 on equal 2
         s.num_robos = 4u;
-        s.wall_scale = 0.0f;
         s.max_duration = 45.f;
         std::array<Regiment, 2> r{
             center({glm::vec2(1, 0), glm::vec2(-5, .1f), glm::vec2(1.f), 2, 2}),
