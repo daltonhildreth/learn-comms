@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <array>
 
 using namespace std;
 
@@ -52,8 +53,56 @@ static auto make_intersecting_bots(unsigned num, unsigned row_sz) {
     };
 }
 
-static glm::vec2 ignore_wall(unsigned) { return glm::vec2(1000.0f); }
+struct Regiment {
+    glm::vec2 facing;
+    glm::vec2 head;
+    glm::vec2 spacing;
+    unsigned cols;
+    unsigned n;
+};
+static glm::vec2 right_face(Regiment r) {
+    return glm::cross(glm::vec3(r.facing, 0), glm::vec3(0, 0, 1));
+}
+static Regiment center(Regiment r) {
+    float half = (r.spacing.x * static_cast<float>(r.cols - 1)) / 2.f;
+    r.head -= right_face(r) * half;
+    return r;
+}
 
+template <size_t N> static auto make_regimented_bots(std::array<Regiment, N> regs) {
+    for (Regiment r : regs) {
+        r.facing /= glm::length(r.facing);
+    }
+
+    return [regs](unsigned i) {
+        unsigned current = 0;
+        unsigned last = regs[current].n;
+        unsigned j = i;
+        while (j >= last) {
+            j -= last;
+            last = regs[++current].n;
+        }
+
+        unsigned col = j % regs[current].cols;
+        unsigned row = j / regs[current].cols;
+        float u = regs[current].spacing.x * static_cast<float>(col);
+        float v = regs[current].spacing.y * static_cast<float>(row);
+        glm::vec2 x = right_face(regs[current]) * u;
+        glm::vec2 y = -regs[current].facing * v;
+        return x + y + regs[current].head;
+    };
+}
+
+static glm::vec2 ignore_wall(unsigned) { return glm::vec2(1000.0f); }
+static auto make_hole_wall(unsigned width, float gap, float scale) {
+    return [width, gap, scale](unsigned i) {
+        float x = 0;
+        float side = ((i % 2) == 0 ? 1.f : -1.f);
+        float height = static_cast<float>(i / 2);
+        float y = side * (scale * (height + .5f) + gap/2.f);
+        return glm::vec2(x, y);
+    };
+}
 template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 struct Scene {
@@ -189,34 +238,29 @@ static Scene make_scene(unsigned scn) {
         s.wall_scale = 2.0f;
         s.max_duration = 70.f;
         s.pos_of = [](unsigned i) {
-            unsigned col = i % 5;
-            unsigned row = i / 5;
-            float side = (row < 1 ? -3.f : 3.f);
-            float x = static_cast<float>(row) * 1.f + side;
-            float y = static_cast<float>(col) * 1.f - 2.f;
-            return glm::vec2(x, y);
+            return (i==0 ? glm::vec2(-3.f, 0) : glm::vec2(3.f, 0));
         };
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
-        s.wall_pos_of = [](unsigned i) {
-            float x = 0;
-            float y = 2 * (static_cast<float>(i) - 15) + 1.f * (i > 14);
-            return glm::vec2(x, y);
-        };
+        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
         break;
 
-    /*
-    //8: clogged doorway with 2 running in, and 2 escaping.
-    case 8:
+    case 8: // clogged doorway qith 2 running in and 2 out
         s.num_robos = 4u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
-        s.max_duration = ;
-        s.pos_of = ;
-        s.goal_of = ;
-        s.wall_shape_of = ;
-        s.wall_pos_of = ;
+        s.max_duration = 30.f;
+        std::array<Regiment, 2> r{
+            center({glm::vec2(1, 0), glm::vec2(-3, 0), glm::vec2(1.f, 1.f), 2, 2}),
+            center({glm::vec2(-1, 0), glm::vec2(3, 0), glm::vec2(1.f, 1.f), 2, 2})
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = mirror_x_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
         break;
+
+    /*
     //9: clogged doorway with 20 running in, and 20 escaping.
     case 9:
         s.num_robos = 40u;
