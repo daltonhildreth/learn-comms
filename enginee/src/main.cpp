@@ -151,7 +151,11 @@ int main(int argc, char** argv) {
         #ifndef NO_RENDER
         ////UI: would iterate over controllers, but it just handles specific
         //entities for now
-        glfwPollEvents();
+        if (ui::paused) {
+            glfwWaitEvents();
+        } else {
+            glfwPollEvents();
+        }
         //input handling
         ui::handle_input(window, frame_time.delta_s());
 
