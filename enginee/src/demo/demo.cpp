@@ -199,6 +199,7 @@ static Scene make_scene(unsigned scn) {
             case 7:  return glm::vec2( 6.f,  5.f);
             default: assert(false);
             }
+            exit(1);
         };
         break;
 
@@ -263,40 +264,41 @@ static Scene make_scene(unsigned scn) {
         break;
     }
 
-    /*
     case 11: // escaping room
-        s.num_robos = 40u;
-        s.num_walls = 120u;
-        s.wall_scale = 2.0f;
-        s.max_duration = ;
-        s.pos_of = ;
-        s.goal_of = ;
-        s.wall_shape_of = ;
-        s.wall_pos_of = ;
+        assert(false);
+//        s.num_robos = 40u;
+//        s.num_walls = 120u;
+//        s.wall_scale = 2.0f;
+//        s.max_duration = ;
+//        s.pos_of = ;
+//        s.goal_of = ;
+//        s.wall_shape_of = ;
+//        s.wall_pos_of = ;
         break;
 
     case 12: // crowd
-        s.num_robos = 100u;
-        s.num_walls = 0u;
-        s.wall_scale = 0.0f;
-        s.max_duration = ;
-        s.pos_of = ;
-        s.goal_of = ;
-        s.wall_shape_of = ;
-        s.wall_pos_of = ;
+        assert(false);
+ //       s.num_robos = 100u;
+ //       s.num_walls = 0u;
+ //       s.wall_scale = 0.0f;
+ //       s.max_duration = ;
+ //       s.pos_of = ;
+ //       s.goal_of = ;
+ //       s.wall_shape_of = ;
+ //       s.wall_pos_of = ;
         break;
 
     case 13: // two tight formations of 20 going down a hall
-        s.num_robos = 40u;
-        s.num_walls = 30u;
-        s.wall_scale = 2.0f;
-        s.max_duration = ;
-        s.pos_of = ;
-        s.goal_of = ;
-        s.wall_shape_of = ;
-        s.wall_pos_of = ;
+        assert(false);
+//        s.num_robos = 40u;
+//        s.num_walls = 30u;
+//        s.wall_scale = 2.0f;
+//        s.max_duration = ;
+//        s.pos_of = ;
+//        s.goal_of = ;
+//        s.wall_shape_of = ;
+//        s.wall_pos_of = ;
         break;
-    */
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
@@ -317,6 +319,7 @@ static Scene make_scene(unsigned scn) {
             case 2: return glm::vec2(7.f, 0);
             default: assert(false);
             }
+            exit(1);
         };
         s.goal_of = mirror_x_goal;
         break;
@@ -332,6 +335,7 @@ static Scene make_scene(unsigned scn) {
             case 3: return glm::vec2(-2.f, .1f);
             default: assert(false);
             }
+            exit(1);
         };
         s.goal_of = mirror_x_goal;
         break;
