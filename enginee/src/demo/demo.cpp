@@ -91,8 +91,8 @@ static auto make_intersecting_bots(unsigned n_per, unsigned cols, float dist) {
     return make_regimented_bots(regiments);
 }
 static glm::vec2 ignore_wall(unsigned) { return glm::vec2(1000.0f); }
-static auto make_hole_wall(unsigned width, float gap, float scale) {
-    return [width, gap, scale](unsigned i) {
+static auto make_hole_wall(float gap, float scale) {
+    return [gap, scale](unsigned i) {
         float x = 0;
         float side = ((i % 2) == 0 ? 1.f : -1.f);
         float height = static_cast<float>(i / 2);
@@ -212,7 +212,7 @@ static Scene make_scene(unsigned scn) {
         };
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
-        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
+        s.wall_pos_of = make_hole_wall(1.f, s.wall_scale);
         break;
 
     case 8: { // clogged doorway qith 2 running in and 2 out
@@ -227,7 +227,7 @@ static Scene make_scene(unsigned scn) {
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
-        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
+        s.wall_pos_of = make_hole_wall(1.f, s.wall_scale);
         break;
     }
 
@@ -243,7 +243,7 @@ static Scene make_scene(unsigned scn) {
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
-        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
+        s.wall_pos_of = make_hole_wall(1.f, s.wall_scale);
         break;
     }
 
@@ -259,7 +259,7 @@ static Scene make_scene(unsigned scn) {
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
-        s.wall_pos_of = make_hole_wall(15, 1.f, s.wall_scale);
+        s.wall_pos_of = make_hole_wall(1.f, s.wall_scale);
         break;
     }
 
