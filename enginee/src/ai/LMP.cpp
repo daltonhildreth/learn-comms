@@ -223,7 +223,7 @@ glm::vec2 LMP::calc_sum_force(
         a.local_goal = LMP::lookahead(a, bv);
         glm::vec2 diff = a.local_goal - bv._o;
         //prevents overshooting
-        goal_vel = (diff / glm::max(1.f, glm::length(diff))) * speed;
+        goal_vel = speed * (diff / glm::max(speed, glm::length(diff)));
     } else {
         a.local_goal = bv._o;
         goal_vel = glm::vec2(0);
