@@ -130,17 +130,21 @@ void update_agents() {
     delete dynamic_bvh;
     rebuild_dbvh(dynamics);
 
+    int replanned = 0;
+    const int limit = 10;
     POOL.for_<Agent>([&](Agent& a, Entity& e){
         float dist = glm::length2(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
         bool visible_next = a.cspace->line_of_sight(bv->_o, (*a.plan)[next]);
-        if (!a.has_plan()
+        bool need_replan
+            = !a.has_plan()
             || (a.done() && dist > 1.f)
             // TODO: fix Lookahead/LoS checks instead of a.plan->size() > 1
-            || (!a.done() && !visible_next && a.plan->size() > 1)
-        ) {
+            || (!a.done() && !visible_next && a.plan->size() > 1);
+        if (replanned < limit && need_replan) {
             GMP::plan_one(a);
+            ++replanned;
         }
 
         glm::vec2 f2d = LMP::calc_sum_force(&e, static_bvh, dynamic_bvh,
