@@ -1,4 +1,4 @@
-#Globally Optimize by using covariance matrix adaption:
+# Globally Optimize by using covariance matrix adaption:
 #
 from random import uniform, random
 from shutil import copyfile
@@ -13,8 +13,10 @@ W_LOCAL = 0.2
 W_GLOBAL = 0.2
 IS_COMM = False
 IS_RENDER = False
-SEED = 5117
-M_SHAPE = (3,5)
+SEED = 511607575
+SCENE = 0
+M_SHAPE = (3, 5)
+
 
 def write_config(file, config):
     file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
@@ -25,19 +27,23 @@ def write_config(file, config):
                 file.write(' ')
         file.write('\n')
 
-#will get results to influence nn choice from M
+
 def read_result(file):
+    # will get results to influence nn choice from M
     avg_vel = float(file.readline().strip())
     confident_time = float(file.readline().strip())
-    #avg_time =
+    # avg_time =
     return (avg_vel, confident_time)
+
 
 def result_metric(result):
     _, conf_time = result
     return conf_time
 
+
 class Particle:
     pid = 0
+
     def __init__(self, Blo, Bhi):
         self.pid_me = Particle.pid
         Particle.pid += 1
@@ -92,8 +98,10 @@ class Particle:
             if self.Mp < Mg:
                 Mg = self.Mp
 
+
 class Evaluation:
     i = 0
+
     def __init__(self, M, result=None):
         self.M = M
         if result == None:
@@ -107,30 +115,37 @@ class Evaluation:
 
     def __lt__(self, other):
         return self.result < other.result
+
     def debug(self):
         print("result\n", self.result)
         print("M\n", self.M)
 
+
 def simulate(M, trial):
-    subset = ("" if IS_COMM else "no")+"comm_"+\
-        ("" if IS_RENDER else "no")+"render/"
+    subset = ("" if IS_COMM else "no") + "comm_" +\
+        ("" if IS_RENDER else "no") + "render"
 
     with open('data/comms.config', 'w') as config_clone:
         write_config(config_clone, M)
-    copyfile('data/comms.config', 'data/' + subset + trial + ".config")
+    copyfile('data/comms.config', 'data/' + SCENE +
+             "/" + subset + "/" + trial + ".config")
 
-    prog = "build/" + subset + "bin/gg-engine"
-    args = [str(SEED)]
+    prog = "build/bin/" + subset
+    args = [SCENE, str(SEED)]
     print(prog, " ".join(args))
     system(prog + " " + " ".join(args))
 
-    copyfile("data/comms.result", "data/" + subset + trial + ".result")
+    copyfile(
+        "data/comms.result", "data/" + SCENE + "/"
+        + subset + "/" + trial + ".result"
+    )
 
-    with open ('data/comms.result', 'r') as result_clone:
+    with open('data/comms.result', 'r') as result_clone:
         return result_metric(read_result(result_clone))
 
+
 def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
-    particles = [] #[None] * n
+    particles = []  # [None] * n
     base = Evaluation(np.zeros(shape=shape))
     base.debug()
     Mg = Evaluation(np.empty(0), float('inf'))
@@ -163,7 +178,7 @@ def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
             p.Mx = Evaluation(p.Mv + p.Mx.M)
 
             # update minima
-            #p.minimize(Mg)
+            # p.minimize(Mg)
             if p.Mx < p.Mp:
                 p.Mp = p.Mx
                 if p.Mp < Mg:
@@ -171,9 +186,10 @@ def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
             p.debug(base.result, Mg)
         enough_iter = i >= enough
         i += 1
-        convergent = False #.... TODO
+        convergent = False  # .... TODO
 
     return (particles, convergent, enough_iter)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="\
@@ -197,4 +213,9 @@ if __name__ == '__main__':
     W_INERTIA = args.w_inertia
     N_PARTICLES = args.n_particles
 
-    PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)
+    for scene in range(0, 10):
+        SCENE = scene
+        PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)
+    for scene in range(14, 17):
+        SCENE = scene
+        PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)
