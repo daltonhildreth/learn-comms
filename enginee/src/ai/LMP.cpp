@@ -1,6 +1,7 @@
 #include "LMP.h"
 #include "Pool.h"
 #include "BVH.h"
+#include <util/Seeder.h>
 //#include "debug.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -221,7 +222,10 @@ glm::vec2 LMP::calc_sum_force(
     auto& d = *POOL.get<Dynamics>(*e);
     if (a.has_plan()) {
         a.local_goal = LMP::lookahead(a, bv);
-        glm::vec2 diff = a.local_goal - bv._o;
+        Seeder s;
+        std::uniform_real_distribution<float> perturb(-.01f, .01f);
+        glm::vec2 fuzzy_goal = a.local_goal + glm::vec2(perturb(s.gen()));
+        glm::vec2 diff = fuzzy_goal - bv._o;
         //prevents overshooting
         goal_vel = speed * (diff / glm::max(speed, glm::length(diff)));
     } else {
@@ -281,6 +285,7 @@ glm::vec2 LMP::calc_sum_force(
         }
     }
     */
+
 
     return goal_F + ttc_F;
 }
