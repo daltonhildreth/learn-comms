@@ -44,7 +44,7 @@ def result_metric(result):
 class Particle:
     pid = 0
 
-    def __init__(self, Blo, Bhi):
+    def __init__(self, Blo, Bhi, scene):
         self.pid_me = Particle.pid
         Particle.pid += 1
 
@@ -54,7 +54,7 @@ class Particle:
                 if row > 0 and col > 0:
                     continue
                 self.Mx[row][col] = uniform(Blo[row][col], Bhi[row][col])
-        self.Mx = Evaluation(self.Mx)
+        self.Mx = Evaluation(self.Mx, scene)
 
         self.Mp = self.Mx
 
@@ -67,8 +67,8 @@ class Particle:
                 self.Mv[row][col] = uniform(-mag, mag)
 
     def debug(self, base, Mg):
-        print("i\n", Evaluation.i)
-        print("pid\n", self.pid_me)
+        print("\t\ti\n", Evaluation.i)
+        print("\t\tpid\n", self.pid_me)
         print("result\n", self.Mx.result)
         print("r/b norm\n", self.Mx.result / base)
         print("Gr\n", Mg.result)
@@ -102,10 +102,11 @@ class Particle:
 class Evaluation:
     i = 0
 
-    def __init__(self, M, result=None):
+    def __init__(self, M, scene, result=None):
         self.M = M
+        self.scene = scene
         if result == None:
-            self.result = simulate(M, "t" + str(self.i))
+            self.result = simulate(M, "t" + str(self.i), scene)
             Evaluation.i += 1
         else:
             self.result = result
@@ -121,22 +122,24 @@ class Evaluation:
         print("M\n", self.M)
 
 
-def simulate(M, trial):
-    subset = ("" if IS_COMM else "no") + "comm_" +\
-        ("" if IS_RENDER else "no") + "render"
+def simulate(M, trial, scene):
+    subset = ("" if scene["with_comm"] else "no") + "comm_" +\
+        ("" if scene["with_render"] else "no") + "render"
 
     with open('data/comms.config', 'w') as config_clone:
         write_config(config_clone, M)
-    copyfile('data/comms.config', 'data/' + SCENE +
-             "/" + subset + "/" + trial + ".config")
+    copyfile(
+        'data/comms.config', 'data/' + str(scene["id"])
+        + "/" + subset + "/" + trial + ".config"
+    )
 
     prog = "build/bin/" + subset
-    args = [SCENE, str(SEED)]
+    args = [str(scene["id"]), str(scene["seed"])]
     print(prog, " ".join(args))
     system(prog + " " + " ".join(args))
 
     copyfile(
-        "data/comms.result", "data/" + SCENE + "/"
+        "data/comms.result", "data/" + str(scene["id"]) + "/"
         + subset + "/" + trial + ".result"
     )
 
@@ -144,16 +147,18 @@ def simulate(M, trial):
         return result_metric(read_result(result_clone))
 
 
-def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
+def PSO(scene, n, w_inertia=0.2, w_local=0.2, w_global=0.2):
     particles = []  # [None] * n
-    base = Evaluation(np.zeros(shape=shape))
+    base_scene = copy(scene)
+    #base_scene["with_comm"] = False
+    base = Evaluation(np.zeros(shape=M_SHAPE), base_scene)
     base.debug()
-    Mg = Evaluation(np.empty(0), float('inf'))
-    Blo = -np.ones(shape=shape)
-    Bhi = np.ones(shape=shape)
+    Mg = Evaluation(np.empty(0), scene, result=float('inf'))
+    Blo = -np.ones(shape=M_SHAPE)
+    Bhi = np.ones(shape=M_SHAPE)
 
     for p in range(n):
-        p = Particle(Blo, Bhi)
+        p = Particle(Blo, Bhi, scene)
 
         # don't p.minimize() because all Mp == Mx
         if p.Mp < Mg:
@@ -164,18 +169,18 @@ def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
     convergent = False
     enough_iter = False
     i = 0
-    enough = 200
+    enough = 100
     while not (convergent or enough_iter):
         for p in particles:
             # accelerate / explore
-            for row in range(shape[0]):
-                for col in range(shape[1]):
+            for row in range(M_SHAPE[0]):
+                for col in range(M_SHAPE[1]):
                     if row > 0 and col > 0:
                         continue
                     p.update_vel(row, col, Mg, w_inertia, w_local, w_global)
 
             # integrate velocity
-            p.Mx = Evaluation(p.Mv + p.Mx.M)
+            p.Mx = Evaluation(p.Mv + p.Mx.M, scene)
 
             # update minima
             # p.minimize(Mg)
@@ -186,7 +191,8 @@ def PSO(n, shape, w_inertia=0.2, w_local=0.2, w_global=0.2):
             p.debug(base.result, Mg)
         enough_iter = i >= enough
         i += 1
-        convergent = False  # .... TODO
+        # convergent = False  # TODO
+        convergent = max(sum([np.linalg.norm(p.Mv) for p in particles])) < 1e-9
 
     return (particles, convergent, enough_iter)
 
@@ -195,27 +201,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="\
         Globally optimize via Particle-Swarms the linear communication model\n\
         for the Talking Hive project.\n")
-    parser.add_argument("n_particles", type=int)
-    parser.add_argument("w_inertia", type=float)
-    parser.add_argument("w_local", type=float)
-    parser.add_argument("w_global", type=float)
-    parser.add_argument("is_comm", type=int)
-    parser.add_argument("is_render", type=int)
-    parser.add_argument("seed", type=int)
+    parser.add_argument("--n_particles", type=int, default=12)
+    parser.add_argument("--w_inertia", type=float, default=0.2)
+    parser.add_argument("--w_local", type=float, default=0.2)
+    parser.add_argument("--w_global", type=float, default=0.2)
+    parser.add_argument("--is_comm", type=bool, default=True)
+    parser.add_argument("--is_render", type=bool, default=False)
+    parser.add_argument("--seed", type=int, default=511607575)
 
     args = parser.parse_args()
 
-    SEED = args.seed
-    IS_RENDER = bool(args.is_render)
-    IS_COMM = bool(args.is_comm)
-    W_LOCAL = args.w_local
-    W_GLOBAL = args.w_global
-    W_INERTIA = args.w_inertia
-    N_PARTICLES = args.n_particles
-
-    for scene in range(0, 10):
-        SCENE = scene
-        PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)
-    for scene in range(14, 17):
-        SCENE = scene
-        PSO(N_PARTICLES, M_SHAPE, W_INERTIA, W_LOCAL, W_GLOBAL)
+    for scene in range(0, 10 + 1):
+        PSO(
+            {
+                "id": scene,
+                "seed": args.seed,
+                "with_comm": args.is_comm,
+                "with_render": args.is_render
+            },
+            args.n_particles, args.w_inertia, args.w_local, args.w_global
+        )
+    for scene in range(14, 17 + 1):
+        PSO(
+            {
+                "id": scene,
+                "seed": args.seed,
+                "with_comm": args.is_comm,
+                "with_render": args.is_render
+            },
+            args.n_particles, args.w_inertia, args.w_local, args.w_global
+        )
