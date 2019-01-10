@@ -23,6 +23,8 @@ struct Agent {
         return has_plan() && num_done == static_cast<int>(plan->size());
     }
 
+    unsigned lost_frames = 0;
+
     //planning meta-data
     Cspace2d* cspace;
     PRM* prm;

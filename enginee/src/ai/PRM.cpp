@@ -1,6 +1,7 @@
 #include "PRM.h"
 #include "../util/Seeder.h"
 #include <random>
+#include <algorithm>
 
 using namespace std;
 
@@ -108,10 +109,7 @@ bool Cspace2d::line_of_sight(glm::vec2 a, glm::vec2 b) {
     Lab.y = b.y - a.y;
     float len2 = glm::dot(Lab, Lab);
 
-    for (BoundVolume* bv : _obstacles) {
-        if (!bv->line_of_sight(a, b, Lab, len2)) {
-            return false;//HIT
-        }
-    }
-    return true;//MISS
+    return std::all_of(_obstacles.begin(), _obstacles.end(), [=](auto* bv) {
+        return bv->line_of_sight(a, b, Lab, len2);
+    });
 }

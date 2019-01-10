@@ -69,31 +69,32 @@ float LMP::ttc_(Circ& i, glm::vec2 iv, Rect& j, glm::vec2 jv) {
 }
 
 glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
-    glm::vec2 t_new = a.local_goal;
-    //if not at end
-    if (static_cast<size_t>(a.num_done) < a.plan->size()) {
-        size_t target = static_cast<size_t>(a.num_done);
-        bool at_target = glm::length2(bv._o - (*(a.plan))[target]) < .01;
+    size_t target = static_cast<size_t>(a.num_done);
+    if (target < a.plan->size()) {
+        bool at_target = glm::length2(bv._o - (*a.plan)[target]) < .01;
         if (at_target)
-            ++a.num_done;
+            ++target;
 
-        t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
-        size_t next = static_cast<size_t>(a.num_done + 1);
-        bool incomplete = a.plan->size() > next;
-        bool next_visible = a.cspace->line_of_sight(bv._o, (*(a.plan))[next]);
+        // local_goal should be the next PRM node
+        a.local_goal = (*a.plan)[target];
+        size_t next = target + 1;
 
-        while (incomplete && next_visible) {
-            ++a.num_done;
-            t_new = (*(a.plan))[static_cast<size_t>(a.num_done)];
-            next = static_cast<size_t>(a.num_done + 1);
-            incomplete = a.plan->size() > next;
-            next_visible = a.cspace->line_of_sight(bv._o, (*(a.plan))[next]);
+        // do the actual looking ahead for further nodes
+        while (true) {
+            bool incomplete = next < a.plan->size();
+            bool next_visible = a.cspace->line_of_sight(bv._o, (*a.plan)[next]);
+            if (!(incomplete && next_visible)) {
+                break;
+            }
+            ++target;
+            a.local_goal = (*a.plan)[target];
+            next = target + 1;
         }
+        a.num_done = target;
     } else {
-        //at end, go to end.
-        t_new = (*(a.plan))[a.plan->size() - 1];
+        a.local_goal = (*a.plan)[a.plan->size() - 1];
     }
-    return t_new;
+    return a.local_goal;
 }
 
 const double TTC_THRESHOLD = 5.0;

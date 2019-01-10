@@ -132,10 +132,10 @@ static Scene make_scene(unsigned scn) {
         s.goal_of = opposite_goal;
         break;
 
-    case 2: // circle radius 10; 30 agent; 40 .1x.1m posts in radius 8; 40 s
+    case 2: // circle radius 10; 30 agent; 40 .3x.3m posts in radius 8; 40 s
         s.num_robos = 60u;
         s.num_walls = 60u;
-        s.wall_scale = 0.1f;
+        s.wall_scale = 0.3f;
         s.max_duration = 40.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;

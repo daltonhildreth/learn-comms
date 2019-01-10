@@ -140,10 +140,13 @@ static bool hit(float t) {
 }
 
 //find (t, s) such that Lo + Ld*t = Mo + Md*s
-static std::pair<float, float> line_intersect(glm::vec2 Lo, glm::vec2 Ld,
-        glm::vec2 Mo, glm::vec2 Md) {
+// TODO: make this function clearer
+static std::pair<float, float> line_intersect(
+    glm::vec2 Lo, glm::vec2 Ld,
+    glm::vec2 Mo, glm::vec2 Md
+) {
     glm::vec2 MLo = Mo - Lo;
-    float s = (Ld.x*MLo.y - Ld.y*MLo.x) / (Md.x * Ld.y - Md.y * Ld.x);
+    float s = (Ld.x * MLo.y - Ld.y * MLo.x) / (Md.x * Ld.y - Md.y * Ld.x);
     float t;
     if (fabs(Ld.x) < 0.00000001) {
         t = (Mo.y + Md.y * s - Lo.x) / Ld.y;
@@ -153,8 +156,12 @@ static std::pair<float, float> line_intersect(glm::vec2 Lo, glm::vec2 Ld,
     return {t, s};
 }
 
-bool Rect::line_of_sight(glm::vec2 start, glm::vec2 /*end*/,
-        glm::vec2 La_to_b, float len2) {
+bool Rect::line_of_sight(
+    glm::vec2 start,
+    glm::vec2 /*end*/,
+    glm::vec2 La_to_b,
+    float len2
+) {
     //dims
     float l = _o.x - _w / 2;
     float r = _o.x + _w / 2;
@@ -166,19 +173,26 @@ bool Rect::line_of_sight(glm::vec2 start, glm::vec2 /*end*/,
     glm::vec2 tl(l, t);
     glm::vec2 tr(r, t);
 
-    std::array<std::pair<glm::vec2, glm::vec2>, 4> edges =
-        {std::make_pair(tr, tl),
+    std::array<std::pair<glm::vec2, glm::vec2>, 4> edges = {
+        std::make_pair(tl, tr),
         std::make_pair(br, tr),
         std::make_pair(bl, br),
-        std::make_pair(tl, bl)};
+        std::make_pair(bl, tl),
+    };
 
-    return std::none_of(edges.cbegin(), edges.cend(),
+    La_to_b /= sqrtf(len2);
+    return std::none_of(
+        edges.cbegin(),
+        edges.cend(),
         [start, La_to_b, len2](std::pair<glm::vec2, glm::vec2> edge) {
-            auto&& result = line_intersect(start, La_to_b/sqrtf(len2),
-                edge.second, edge.first - edge.second);
-            return hit(hit_clamp<on_line>(result.second))
-                && hit(hit_clamp<on_ray>(result.first));
-        });
+            auto parametrics = line_intersect(
+                start, La_to_b,
+                edge.first, edge.second - edge.first
+            );
+            return hit(hit_clamp<on_line>(parametrics.second))
+                && hit(hit_clamp<on_line>(parametrics.first / len2));
+        }
+    );
 }
 
 //assumes axis alignment
