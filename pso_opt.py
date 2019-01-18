@@ -7,14 +7,6 @@ from os import system
 import argparse
 import numpy as np
 
-N_PARTICLES = 12
-W_INERTIA = 0.2
-W_LOCAL = 0.2
-W_GLOBAL = 0.2
-IS_COMM = False
-IS_RENDER = False
-SEED = 511607575
-SCENE = 0
 M_SHAPE = (3, 5)
 
 

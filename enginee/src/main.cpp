@@ -90,7 +90,18 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
     //center window
-    glfwSetWindowPos(window, mode0->width/2 - size.x/2, mode0->height/2 - size.y/2);
+    int nudge = -1;
+    if (argc > 3) {
+        nudge = std::stoi(argv[3]);
+        #ifndef NO_RENDER
+        ui::paused = false;
+        #endif
+    }
+    glfwSetWindowPos(
+        window,
+        mode0->width/2 - nudge * size.x,
+        mode0->height/2 - size.y/2
+    );
     glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);
     glfwMakeContextCurrent(window);
 

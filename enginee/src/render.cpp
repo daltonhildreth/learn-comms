@@ -209,10 +209,10 @@ void input_key(GLFWwindow* w, double ddt) {
 
 void input_cursor(GLFWwindow*, double) {//ddt) {
     //float dt = static_cast<float>(ddt);
-    glm::vec2 offset = ui::d_cursor_pos * 0.001f;
-    glm::vec3 look_new = cam->look_dir() +
-        + offset.x * cam->right() - offset.y * cam->up();
-    cam->set_rot(look_new, cam->up());
+    //glm::vec2 offset = ui::d_cursor_pos * 0.001f;
+    //glm::vec3 look_new = cam->look_dir() +
+    //    + offset.x * cam->right() - offset.y * cam->up();
+    //cam->set_rot(look_new, cam->up());
 }
 
 void input_scroll(GLFWwindow*, double ddt) {
