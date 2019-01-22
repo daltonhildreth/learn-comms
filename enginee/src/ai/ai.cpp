@@ -136,7 +136,10 @@ void update_agents() {
         float dist = glm::length2(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
-        bool visible_next = a.cspace->line_of_sight(bv->_o, (*a.plan)[next]);
+        bool visible_next = false;
+        if (a.has_plan()) {
+            visible_next = a.cspace->line_of_sight(bv->_o, (*a.plan)[next]);
+        }
         a.lost_frames = visible_next ? 0 : a.lost_frames + 1;
         bool need_replan =
             !a.has_plan()
