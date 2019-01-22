@@ -15,12 +15,9 @@ Shader::Shader()
 
 Shader::~Shader() {
     for (auto& sobj : shader_objects) {
-        glDetachShader(program, sobj.first);
-        glDeleteShader(sobj.first);
         sobj.first = 0;
     }
     shader_objects.clear();
-    glDeleteProgram(program);
     program = 0;
     success = false;
 }
