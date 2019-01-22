@@ -83,7 +83,12 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); //for Mac OSX to work
     glm::vec<2, int> size(min(640, mode0->width), min(480, mode0->height));
-    GLFWwindow* window = glfwCreateWindow(size.x, size.y, "gg", nullptr, nullptr);
+    GLFWwindow* window;
+    if (argc > 3) {
+        window = glfwCreateWindow(size.x, size.y, argv[3], nullptr, nullptr);
+    } else {
+        window = glfwCreateWindow(size.x, size.y, "gg", nullptr, nullptr);
+    }
     if (!window) {
         cerr << "gg! Failed to create window context.\n";
         glfwTerminate();
