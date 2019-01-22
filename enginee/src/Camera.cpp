@@ -94,7 +94,7 @@ float Camera::zoom() {
 void Camera::apply_proj(Shader& shader) {
     if (_dirty) {
         //_proj = glm::perspective(glm::radians(_fov), _aspect, _near, _far);
-        _proj = glm::ortho(-10.f, 10.f, -10.f, 10.f, _near, _far);
+        _proj = glm::ortho(-_pos.y/2.f, _pos.y/2.f, -_pos.y/2.f, _pos.y/2.f, _near, _far);
         _dirty = false;
         shader.use();
         shader.set("proj", _proj);

@@ -127,7 +127,7 @@ static Scene make_scene(unsigned scn) {
     case 1: // circle radius 20; 90 agents 70s
         s.num_robos = 60u;
         s.max_duration = 70.f;
-        s.cam_dist = 2.f;
+        s.cam_dist = 1.4f;
         s.pos_of = make_radial_bots(s.num_robos, 20.f);
         s.goal_of = opposite_goal;
         break;

@@ -62,7 +62,7 @@ private:
     float _aspect;
     const float _def_near = .1f;
     float _near;
-    const float _def_far = 100.f;
+    const float _def_far = 1000.f;
     float _far;
 };
 
