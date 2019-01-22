@@ -492,16 +492,17 @@ void init(unsigned scn_i) {
     #ifndef NO_RENDER
     {
         render::dir_lights.push_back(make_unique<DirLight>());
-        render::dir_lights.back()->dir(glm::vec3(-1, -2, -1));
+        render::dir_lights.back()->dir(glm::vec3(0, -1, 0));
         render::dir_lights.back()->ambient(glm::vec3(.1f));
-        render::dir_lights.back()->diffuse(glm::vec3(.5f));
-        render::dir_lights.back()->specular(glm::vec3(1.f));
+        render::dir_lights.back()->diffuse(glm::vec3(.35f));
+        render::dir_lights.back()->specular(glm::vec3(.1f));
     }
+
 
     Seeder s;
     typedef uniform_real_distribution<float> UFD;
     UFD y_dist(3, 10);
-    UFD tweak(-.3f, .3f);
+    UFD tweak(-.2f, .2f);
     UFD map(-25.f, 25.f);
     for (unsigned i = 0; i < 8; ++i) {
         render::point_lights.push_back(make_unique<PointLight>());
@@ -510,9 +511,10 @@ void init(unsigned scn_i) {
         render::point_lights.back()->att_to_dist(1000);
         render::point_lights.back()->ambient(glm::vec3(0.f));
         render::point_lights.back()->diffuse(glm::vec3(.5f)
-            + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen())));
-        render::point_lights.back()->specular(glm::vec3(.3f));
+             + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen())));
+        render::point_lights.back()->specular(glm::vec3(.2f));
     }
+
 
     render::cam_dist = scn.cam_dist;
     #endif
