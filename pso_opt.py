@@ -7,15 +7,15 @@ from os import system
 import argparse
 import numpy as np
 
-M_SHAPE = (3, 5)
-
+M_SHAPE = (4, 7)
+N_COMM = 2
 
 def write_config(file, config):
     file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
     for i in range(0, M_SHAPE[0]):
         for j in range(0, M_SHAPE[1]):
             file.write(str(config[i][j]))
-            if (j != 4):
+            if (j != M_SHAPE[1] - 1):
                 file.write(' ')
         file.write('\n')
 
@@ -43,7 +43,8 @@ class Particle:
         self.Mx = np.zeros(shape=M_SHAPE)
         for row in range(len(self.Mx)):
             for col in range(len(self.Mx[row])):
-                if row > 0 and col > 0:
+                # Don't fill in values that are redundant to TTC
+                if row > N_COMM - 1 and col > N_COMM - 1:
                     continue
                 self.Mx[row][col] = uniform(Blo[row][col], Bhi[row][col])
         self.Mx = Evaluation(self.Mx, scene)
@@ -53,7 +54,8 @@ class Particle:
         self.Mv = np.zeros(shape=M_SHAPE)
         for row in range(len(self.Mv)):
             for col in range(len(self.Mv[row])):
-                if row > 0 and col > 0:
+                # Don't fill in values that are redundant to TTC
+                if row > N_COMM - 1 and col > N_COMM - 1:
                     continue
                 mag = abs(Bhi[row][col] - Blo[row][col])
                 self.Mv[row][col] = uniform(-mag, mag)

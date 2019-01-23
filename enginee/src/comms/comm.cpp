@@ -5,10 +5,11 @@
 #include <iostream>
 
 namespace comm {
-//one 3x5 matrix I split into two for easy multiplication later
-glm::vec3 M_c;
-glm::mat2x3 M_relv;
-glm::mat2x3 M_relp;
+//one 4x7 matrix I split into four for easy multiplication later
+glm::mat2x4 M_c; // c input/output
+glm::mat2x4 M_relv; // relative velocity input
+glm::mat2x4 M_relp; // relative position input
+glm::vec4 M_dist; // relative distance input
 
 /*
 static void print_v3as2(glm::vec3 v, char c) {
@@ -29,75 +30,66 @@ void init() {
     std::stringstream ss(config_str);
     std::string line;
     std::getline(ss, line, '\n');
-    int row = 0;
-    while (std::getline(ss, line, '\n')) {
-        int col = 0;
+    for (int row = 0; std::getline(ss, line, '\n'); ++row) {
         std::stringstream sl(line);
         std::string item;
-        while (std::getline(sl, item, ' ')) {
+        for (int col = 0; std::getline(sl, item, ' '); ++col) {
             if (col == 0)
-                M_c[row] = std::stof(item);
-            else if (col == 1 || col == 2)
-                M_relv[col-1][row] = std::stof(item);
+                M_c[col][row] = std::stof(item);
+            else if (col == 2 || col == 3)
+                M_relv[col - 2][row] = std::stof(item);
+            else if (col == 4 || col == 5)
+                M_relp[col - 4][row] = std::stof(item);
             else
-                M_relp[col-3][row] = std::stof(item);
-            col++;
+                M_dist[row] = std::stof(item);
         }
-        row++;
     }
 }
 
 void run() {
-    POOL.for_<CommComp>([&](CommComp& c, Entity& e_c){
-        Dynamics* best_d = nullptr;
-        CommComp* best_c = nullptr;
+    POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
+        Dynamics* closest_d = nullptr;
+        CommComp* closest_c = nullptr;
         Dynamics& d = *POOL.get<Dynamics>(e_c);
         float dist2 = std::numeric_limits<float>::max();
 
-        //this is inefficient, but oh well.
-        POOL.for_<CommComp>([&](CommComp& o_c, Entity& e_other){
+        // this is *really* inefficient, but oh well.
+        POOL.for_<CommComp>([&](CommComp& o_c, Entity& e_other) {
             if (e_c.id == e_other.id)
                 return;
+
             Dynamics* d_other = POOL.get<Dynamics>(e_other);
             glm::vec3 diff = d_other->pos - d.pos;
             float dot = glm::dot(diff, diff);
             if (dot < dist2) {
                 dist2 = dot;
-                best_d = d_other;
-                best_c = &o_c;
+                closest_d = d_other;
+                closest_c = &o_c;
             }
         });
 
-        float c_c = best_c->c;
-        glm::vec2 vel_forward = best_c->facing;
-        glm::vec2 vel_right = best_c->right();
-        glm::vec2 diffv = best_d->vel - d.vel;
-        glm::vec2 relv(glm::dot(vel_right, diffv), glm::dot(vel_forward, diffv));
-        glm::vec2 diffp = best_d->pos - d.pos;
-        glm::vec2 relp(glm::dot(vel_right, diffp), glm::dot(vel_forward, diffp));
+        glm::vec2 v_forward = closest_c->facing;
+        glm::vec2 v_right = closest_c->right();
 
-        glm::vec3 result =
-            M_c * c_c
-            + M_relv * relv
-            + M_relp * relp;
-        for (int i =0; i < 3; ++i)
-            result[i] = glm::clamp<float>(result[i], -1, 1);
-        c.buf_in(result);
+        // this assumes v_forward/v_right are normalized
+        glm::vec2 diff_v = closest_d->vel - d.vel;
+        glm::vec2 rel_v(glm::dot(v_right, diff_v), glm::dot(v_forward, diff_v));
+        glm::vec2 diff_p = closest_d->pos - d.pos;
+        glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_forward, diff_p));
+
+        c.buf_in(M_c * closest_c->c + M_relv * rel_v + M_relp * rel_p);
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
         Dynamics& d = *POOL.get<Dynamics>(e_c);
-        glm::vec2 vel_forward = c.facing;
+        glm::vec2 diff = c.facing * c.v_buf.y + c.right() * c.v_buf.x;
 
-        glm::vec2 vel_right = c.right();
-        glm::vec2 diff = vel_forward * c.v_buf.y + vel_right * c.v_buf.x;
         Agent* a = POOL.get<Agent>(e_c);
         if (a && !a->done())
             d.vel += glm::vec3(diff.x, 0.f, diff.y);
-        //if (!a.done()) {
+
         if (glm::length(d.vel) > 0 && glm::length(a->local_goal - a->start) > 0) {
             c.facing = glm::normalize(a->local_goal - a->start);
-                //glm::normalize(glm::vec2(d.vel.x, d.vel.z));
         }
         c.swap();
     });
