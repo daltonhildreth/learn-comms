@@ -144,7 +144,7 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         {-0.9689, 1.8758, 0.0415},
         {0.0557, -0.2040, 1.0570},
     };
-    glm::vec3 rgb = XYZ2rgb * XYZ;
+    glm::vec3 rgb = XYZ * XYZ2rgb;
 
     auto finish_rgb = [](double a) -> double {
         if (a > 0.0031308) {
@@ -152,7 +152,7 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         } else {
             a *= 12.92;
         }
-        return max(0., min(1., a));
+        return pow(max(0., min(1., a)), 2.2);
     };
     rgb[0] = finish_rgb(rgb[0]);
     rgb[1] = finish_rgb(rgb[1]);
