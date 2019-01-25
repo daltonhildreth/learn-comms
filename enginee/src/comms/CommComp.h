@@ -9,6 +9,7 @@ struct CommComp {
     glm::vec2 v_buf;
     glm::vec2 facing;
     void buf_in(glm::vec4 v) {
+        // distributed non-linearity
         for (int i = 0; i < 4; ++i) {
             v[i] = glm::clamp<float>(v[i], -1, 1);
         }

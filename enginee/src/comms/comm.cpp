@@ -77,7 +77,14 @@ void run() {
         glm::vec2 diff_p = closest_d->pos - d.pos;
         glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_forward, diff_p));
 
-        c.buf_in(M_c * closest_c->c + M_relv * rel_v + M_relp * rel_p);
+
+        Agent& a = *POOL.get<Agent>(e_c);
+        c.buf_in(
+            M_c * closest_c->c
+            + M_relv * rel_v
+            + M_relp * rel_p
+            + M_dist * a.goal_dist
+        );
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {

@@ -169,7 +169,7 @@ def PSO(scene, n, w_inertia=0.2, w_local=0.2, w_global=0.2):
             # accelerate / explore
             for row in range(M_SHAPE[0]):
                 for col in range(M_SHAPE[1]):
-                    if row > 0 and col > 0:
+                    if row > N_COMM - 1 and col > N_COMM - 1:
                         continue
                     p.update_vel(row, col, Mg, w_inertia, w_local, w_global)
 
@@ -215,6 +215,7 @@ if __name__ == '__main__':
             },
             args.n_particles, args.w_inertia, args.w_local, args.w_global
         )
+        Evaluation.i = 0
     for scene in range(14, 17 + 1):
         PSO(
             {
@@ -225,3 +226,4 @@ if __name__ == '__main__':
             },
             args.n_particles, args.w_inertia, args.w_local, args.w_global
         )
+        Evaluation.i = 0
