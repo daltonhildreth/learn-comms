@@ -37,6 +37,7 @@
 
 using namespace std;
 
+void prewarm_game(bool& all_done, unsigned total_frames);
 void glfw_error(int err, const char* msg);
 void monitor_connect(GLFWmonitor*, int event);
 void keymap_input(GLFWwindow*);
@@ -158,6 +159,8 @@ int main(int argc, char** argv) {
     unsigned fps = 0;
     auto last_s = init_time.time();
     bool all_done = false;
+
+    prewarm_game(all_done, total_frames);
     while(
         !all_done
         #ifndef NO_RENDER
@@ -237,6 +240,19 @@ int main(int argc, char** argv) {
     glfwTerminate();
     #endif
     return EXIT_SUCCESS;
+}
+
+void prewarm_game(bool& all_done, unsigned total_frames) {
+    all_done = demo::run(
+        1.f/60.f, static_cast<float>(total_frames)/60.f, total_frames
+    );
+
+    #ifndef NO_COMM
+    comm::run();
+    #endif
+    ai::update_agents();
+    physics::prewarm(1.f/60.f);
+    POOL.all_sync();
 }
 
 void glfw_error(int err, const char* msg) {

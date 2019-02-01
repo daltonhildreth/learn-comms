@@ -93,7 +93,7 @@ void run() {
 
         Agent* a = POOL.get<Agent>(e_c);
         if (a && !a->done())
-            d.vel += glm::vec3(diff.x, 0.f, diff.y);
+            d.force += glm::vec3(diff.x, 0.f, diff.y);
 
         if (glm::length(d.vel) > 0 && glm::length(a->local_goal - a->start) > 0) {
             c.facing = glm::normalize(a->local_goal - a->start);

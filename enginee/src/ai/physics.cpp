@@ -12,49 +12,47 @@ uint64_t vel_count;
 
 void init() {}
 
+void prewarm(float dt) {
+    // half-step leap-frog
+    POOL.for_<Dynamics>([&](Dynamics& d, const Entity&) {
+        d.acc = d.force / d.mass;
+        d.vel_forehalf = d.vel + dt / 2.f * d.acc;
+    });
+}
+
 void simulate(float dt) {
     POOL.for_<Dynamics>([&](Dynamics& d, const Entity& e) {
-        //halp-step integration, I think....
-        glm::vec3 next_a = d.force/d.mass;
+        // leap-frog
+        d.vel_backhalf = d.vel_forehalf;
+        d.acc = d.force / d.mass;
+        d.vel_forehalf = d.vel_backhalf + dt * d.acc;
+        d.vel = d.vel_backhalf + dt / 2.f * d.acc;
+        d.pos += d.vel_forehalf * dt;
 
-        glm::vec3 half_a = (d.acc + next_a) * .5f;
-        glm::vec3 next_v = d.vel + dt * half_a;
-
-        glm::vec3 half_v = (next_v + d.vel) * .5f;
-        //glm::vec3 half_v = d.vel + (dt * .5f) * d.acc;
-        if (glm::length2(half_v) > 1.f) {
-            half_v = glm::normalize(half_v);
-            next_v = glm::normalize(next_v);
-            next_a = glm::vec3(0);
+        if (glm::length2(d.vel_forehalf) > 1.f) {
+            d.vel_forehalf = glm::normalize(d.vel_forehalf);
+            d.acc = glm::vec3(0);
         }
-        glm::vec3 next_p = d.pos + dt * (half_v);
 
-        //detect collisions; no momentum, also not CCD, sadly. Extrusion would
-        //be very expensive
+        //detect collisions; no momentum
         BoundVolume** bv = POOL.get<BoundVolume*>(e);
         if (bv) {
-            (*bv)->_o = glm::vec2(next_p.x, next_p.z);
+            (*bv)->_o = glm::vec2(d.pos.x, d.pos.z);
 
             std::vector<Entity*> in_dyn = ai::dynamic_bvh->query(*bv);
             std::vector<Entity*> in_st = ai::static_bvh->query(*bv);
 
             //collision! undo the motion at the collision!
             if (in_dyn.size() > 1 || in_st.size() > 0) {
-                //next_p = d.pos - dt * half_v;
-                //next_v = -next_v;
-                //next_a = -next_a;
+                printf("TODO: Collsion Response\n");
             }
         }
 
-        d.pos = next_p;
-        d.vel = next_v;
         Agent* a = POOL.get<Agent>(e);
         if (a && !a->done()) {
-            avg_velocity = (avg_velocity * static_cast<float>(vel_count)
-                + glm::length(d.vel))
-                / (static_cast<float>(vel_count) + 1.f);
+            float v = static_cast<float>(vel_count);
+            avg_velocity = (avg_velocity * v + glm::length(d.vel)) / (v + 1.f);
         }
-        d.acc = next_a;
         d.force = glm::vec3(0);
     });
 }

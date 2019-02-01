@@ -63,7 +63,7 @@ std::vector<Entity*> BVH::query(BoundVolume* q) {
     if (q->_vt == BoundVolume::volume_type::CIRC) {
         query_(static_cast<Circ*>(q), NN);
     } else {
-        query_(dynamic_cast<Rect*>(q), NN);
+        query_(static_cast<Rect*>(q), NN);
     }
     return NN;
 }
