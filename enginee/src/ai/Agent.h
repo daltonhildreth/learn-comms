@@ -15,6 +15,8 @@ struct Agent {
     int num_done;
     std::vector<glm::vec2>* plan;
 
+    float goal_dist;
+
     bool has_plan() {
         return plan != nullptr && static_cast<int>(plan->size()) > 0;
     }

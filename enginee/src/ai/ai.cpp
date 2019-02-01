@@ -104,6 +104,7 @@ void init() {
             a.prm = std_prm;
             a.local_goal = glm::vec2(0, 0);
             a.plan = nullptr;
+            a.goal_dist = 0.f;
 
             GMP::plan_one(a);
         });
@@ -133,7 +134,7 @@ void update_agents() {
     int replanned = 0;
     const int limit = 2;
     POOL.for_<Agent>([&](Agent& a, Entity& e){
-        float dist = glm::length2(a.final_goal - a.start);
+        a.goal_dist = glm::length2(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
         bool visible_next = false;
@@ -143,7 +144,7 @@ void update_agents() {
         a.lost_frames = visible_next ? 0 : a.lost_frames + 1;
         bool need_replan =
             !a.has_plan()
-            || (a.done() && dist > 1.f)
+            || (a.done() && a.goal_dist > 1.f)
             || (!a.done() && !visible_next && a.lost_frames >= 360);
         if (replanned < limit && need_replan) {
             GMP::plan_one(a);

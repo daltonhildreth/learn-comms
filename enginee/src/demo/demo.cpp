@@ -437,8 +437,8 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 
     #ifndef NO_COMM
     auto& c = *POOL.get<CommComp>(cid);
-    c.c = 0;
-    c.c_buf = 0;
+    c.c = glm::vec2(0);
+    c.c_buf = glm::vec2(0);
     c.v_buf = glm::vec2(0);
     c.facing = a.final_goal - a.start;
     #endif
