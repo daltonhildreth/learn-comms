@@ -428,6 +428,9 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     t.set_mat(scale);
 
     auto& d = *POOL.get<Dynamics>(did);
+    d.force = glm::vec3(0);
+    d.acc = glm::vec3(0);
+    d.vel = glm::vec3(0);
     d.pos = glm::vec3(pos.x, 0, pos.y);
     d.mass = 1.f;
 

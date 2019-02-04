@@ -152,8 +152,11 @@ void update_agents() {
             a.lost_frames = 0;
         }
 
-        glm::vec2 f2d = LMP::calc_sum_force(&e, static_bvh, dynamic_bvh,
-            statics, dynamics);
+        glm::vec2 f2d = LMP::calc_sum_force(
+            &e,
+            static_bvh, dynamic_bvh,
+            statics, dynamics
+        );
         POOL.get<Dynamics>(e)->force += glm::vec3(f2d.x, 0, f2d.y);
     });
 }
