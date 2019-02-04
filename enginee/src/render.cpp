@@ -103,9 +103,9 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     Lab[1] *= 128.f;
     Lab[2] *= 128.f;
     glm::vec3 XYZ;
-    XYZ[0] = (Lab[0] + 16.) / 116.;
-    XYZ[1] = Lab[1] / 500. + XYZ[0];
-    XYZ[2] = XYZ[0] - Lab[2] / 200.;
+    XYZ[0] = static_cast<float>((Lab[0] + 16.) / 116.);
+    XYZ[1] = static_cast<float>(Lab[1] / 500. + XYZ[0]);
+    XYZ[2] = static_cast<float>(XYZ[0] - Lab[2] / 200.);
 
     auto maybe_cube = [](double a) {
         double cube = a * a * a;
@@ -115,9 +115,9 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         return (a - 16. / 116.) / 7.787;
     };
     // D65 , 2 degree standard illuminant (Daylight, sRGB, Adobe-RGB)
-    XYZ[0] = 0.95047 * maybe_cube(XYZ[0]);
-    XYZ[1] = 1.00000 * maybe_cube(XYZ[1]);
-    XYZ[2] = 1.08883 * maybe_cube(XYZ[2]);
+    XYZ[0] = static_cast<float>(0.95047 * maybe_cube(XYZ[0]));
+    XYZ[1] = static_cast<float>(1.00000 * maybe_cube(XYZ[1]));
+    XYZ[2] = static_cast<float>(1.08883 * maybe_cube(XYZ[2]));
 
     glm::mat3 XYZ2rgb = {
         {3.2406, -1.5372, -0.4986},
@@ -134,9 +134,9 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         }
         return pow(max(0., min(1., a)), 2.2);
     };
-    rgb[0] = finish_rgb(rgb[0]);
-    rgb[1] = finish_rgb(rgb[1]);
-    rgb[2] = finish_rgb(rgb[2]);
+    rgb[0] = static_cast<float>(finish_rgb(rgb[0]));
+    rgb[1] = static_cast<float>(finish_rgb(rgb[1]));
+    rgb[2] = static_cast<float>(finish_rgb(rgb[2]));
     return rgb;
 }
 
@@ -219,7 +219,7 @@ glm::vec<2, int> create_context_window(
 
     glfwSetWindowPos(
         window,
-        mode0->width / 2 - split_offset * size.x,
+        mode0->width / 2 - static_cast<int>(split_offset) * size.x,
         mode0->height / 2 - size.y / 2
     );
     glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);

@@ -27,10 +27,10 @@ template <typename T> void DataTable<T>::attach(uint16_t id, uint16_t e) {
     _table.at(id).first = e;
 }
 
-template <typename T> std::optional<uint16_t> DataTable<T>::other(uint16_t id) {
+template <typename T> std::experimental::optional<uint16_t> DataTable<T>::other(uint16_t id) {
     auto v = _table.find(id);
     if (id == 0 || v == _table.end()) {
-        return std::nullopt;
+        return std::experimental::nullopt;
     }
     return v->first;
 }

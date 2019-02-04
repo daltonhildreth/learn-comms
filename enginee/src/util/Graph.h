@@ -1,7 +1,7 @@
 #pragma once
 #include <cassert>
 #include <functional>
-#include <optional>
+#include <experimental/optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -18,7 +18,7 @@ public:
     void add_edge(const NodeId& v, const NodeId& u);
 
     Nodes& edges(const NodeId& v);
-    std::optional<T> data(const NodeId& v);
+    std::experimental::optional<T> data(const NodeId& v);
 
     void for_vertex(std::function<void(NodeId)> f);
     void for_edge(std::function<void(NodeId, NodeId)> f);
@@ -69,7 +69,7 @@ template <class T> inline Nodes& Graph<T>::edges(const NodeId& v) {
     } // return _edges.count(v) ? _edges[const_cast<NodeId>(v)] : {};
 }
 
-template <class T> inline std::optional<T> Graph<T>::data(const NodeId& v) {
+template <class T> inline std::experimental::optional<T> Graph<T>::data(const NodeId& v) {
     if (_vertices.count(v)) {
         return _vertices[v];
     } else {

@@ -313,7 +313,7 @@ if __name__ == "__main__":
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)
     parser.add_argument("--w_global", type=float, default=0.2)
-    parser.add_argument("--seed", type=int, default=511_607_575)
+    parser.add_argument("--seed", type=int, default=511607575)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--convergence", type=float, default=1e-9)
     args = parser.parse_args()

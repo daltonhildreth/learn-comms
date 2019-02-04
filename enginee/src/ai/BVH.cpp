@@ -157,19 +157,19 @@ bool BVH::circ_circ_collider_(Circ* q, Circ* c) {
     return glm::dot(diff, diff) < r * r;
 }
 
-glm::vec2 BVH::closest_circ_point_(glm::vec2 o, Circ* c) {
-    return c->_r * glm::normalize(o - c->_o);
+glm::vec2 BVH::closest_circ_point_(glm::vec2 o_, Circ* c) {
+    return c->_r * glm::normalize(o_ - c->_o);
 }
 
-glm::vec2 BVH::closest_aabb_point_(glm::vec2 o, Rect* r) {
+glm::vec2 BVH::closest_aabb_point_(glm::vec2 o_, Rect* r) {
     // clamp in all axes to aabb dimensions
-    glm::vec2 closest = o;
+    glm::vec2 closest = o_;
     closest.x = glm::clamp(closest.x, r->_o.x - r->_w / 2, r->_o.x + r->_w / 2);
     closest.y = glm::clamp(closest.y, r->_o.y - r->_h / 2, r->_o.y + r->_h / 2);
 
     // will not change o if inside aabb, so we must clamp further to the edges
-    if (closest == o) {
-        glm::vec2 o_in_r = o - r->_o;
+    if (closest == o_) {
+        glm::vec2 o_in_r = o_ - r->_o;
         float* major_axis = &closest.y;
         float major_o = r->_o.y;
         float major_axis_in_r = o_in_r.y;

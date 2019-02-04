@@ -5,7 +5,7 @@
 #include <functional>
 #include <glm/vec2.hpp>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 
@@ -83,9 +83,9 @@ typedef std::vector<Positional*> Positionals;
 
 void parse(int argc, char** argv, Options&& opts, Positionals&& poss);
 void parse(int argc, char** argv, Options& opts, Positionals& poss);
-}; // namespace cli
+} // namespace cli
 
-std::optional<const std::string> read_file(const std::string& path);
+std::experimental::optional<const std::string> read_file(const std::string& path);
 
 struct Image {
     int width;
@@ -94,4 +94,4 @@ struct Image {
     unsigned char* bytes;
 };
 
-std::optional<Image> read_image(const std::string& image);
+std::experimental::optional<Image> read_image(const std::string& image);

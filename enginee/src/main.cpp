@@ -24,7 +24,6 @@
 #include "util/debug.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
-#include <any>
 #include <cstdint>
 #include <cstdlib>
 #include <glm/vec2.hpp>

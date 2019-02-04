@@ -89,7 +89,7 @@ glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
             a.local_goal = (*a.plan)[target];
             next = target + 1;
         }
-        a.num_done = target;
+        a.num_done = static_cast<int>(target);
     } else {
         a.local_goal = (*a.plan)[a.plan->size() - 1];
     }

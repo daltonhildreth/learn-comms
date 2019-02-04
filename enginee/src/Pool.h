@@ -17,7 +17,7 @@ public:
     uint16_t create(T&&);
     T* get(uint16_t);
     void attach(uint16_t id, uint16_t e);
-    std::optional<uint16_t> other(uint16_t);
+    std::experimental::optional<uint16_t> other(uint16_t);
     void for_(std::function<void(T&, uint16_t)>);
 
     // TODO: get rid of unordered map
