@@ -33,18 +33,26 @@ void simulate(float dt) {
             d.vel_forehalf = glm::normalize(d.vel_forehalf);
             d.acc = glm::vec3(0);
         }
+        d.force = glm::vec3(0);
 
-        //detect collisions; no momentum
+        // detect collisions; no momentum
         BoundVolume** bv = POOL.get<BoundVolume*>(e);
         if (bv) {
             (*bv)->_o = glm::vec2(d.pos.x, d.pos.z);
 
-            std::vector<Entity*> in_dyn = ai::dynamic_bvh->query(*bv);
-            std::vector<Entity*> in_st = ai::static_bvh->query(*bv);
+            auto in_dyn = ai::dynamic_bvh->query(*bv);
+            auto in_st = ai::static_bvh->query(*bv);
 
-            //collision! undo the motion at the collision!
-            if (in_dyn.size() > 1 || in_st.size() > 0) {
-                printf("TODO: Collsion Response\n");
+            // collision! undo the motion at the collision!
+            for (auto coll : in_dyn) {
+                //d.pos += glm::vec3(coll.second.x, 0, coll.second.y);
+                d.force += 10.f * glm::vec3(coll.second.x, 0, coll.second.y);
+            }
+
+            for (auto coll : in_st) {
+                // d.pos += ??? Why are they teleporting if I do this??
+                // I tried doing something based on momentum, but 10.f works...
+                d.force += 10.f * glm::vec3(coll.second.x, 0, coll.second.y);
             }
         }
 
@@ -53,7 +61,6 @@ void simulate(float dt) {
             float v = static_cast<float>(vel_count);
             avg_velocity = (avg_velocity * v + glm::length(d.vel)) / (v + 1.f);
         }
-        d.force = glm::vec3(0);
     });
 }
 }

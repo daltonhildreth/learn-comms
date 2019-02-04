@@ -246,8 +246,9 @@ glm::vec2 LMP::calc_sum_force(
     glm::vec2 vel2d(d.vel.x, d.vel.z);
     Circ q(bv._o, real_speed * static_cast<float>(TTC_THRESHOLD));
 
-    std::vector<Entity*> NNdynamic = dynamic_bvh->query(&q);
-    for (Entity* nearby : NNdynamic) {
+    auto NNdynamic = dynamic_bvh->query(&q);
+    for (auto& nearby_query : NNdynamic) {
+        Entity* nearby = nearby_query.first;
         Agent* b = POOL.get<Agent>(*nearby);
         BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
         Dynamics& bd = *POOL.get<Dynamics>(*nearby);
@@ -263,8 +264,9 @@ glm::vec2 LMP::calc_sum_force(
         ttc_F += LMP::ttc_forces(d, bv, bd, bbv, static_cast<float>(ttc));
     }
 
-    std::vector<Entity*> NNstatic = static_bvh->query(&q);
-    for (Entity* nearby : NNstatic) {
+    auto NNstatic = static_bvh->query(&q);
+    for (auto& nearby_query : NNstatic) {
+        Entity* nearby = nearby_query.first;
         BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
         double ttc = LMP::ttc(bv, glm::vec2(d.vel.x, d.vel.z),
             bbv, glm::vec2(0));
