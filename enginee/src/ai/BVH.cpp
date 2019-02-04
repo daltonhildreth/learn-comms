@@ -172,17 +172,16 @@ glm::vec2 BVH::closest_aabb_point_(glm::vec2 o, Rect* r) {
     if (closest == o) {
         glm::vec2 o_in_r = o - r->_o;
         float* major_axis = &closest.y;
+        float major_o = r->_o.y;
         float major_axis_in_r = o_in_r.y;
-        float* minor_axis = &closest.x;
         float dim = r->_h;
         if (std::abs(o_in_r.x) > std::abs(o_in_r.y)) {
             major_axis = &closest.x;
+            major_o = r->_o.x;
             major_axis_in_r = o_in_r.x;
-            minor_axis = &closest.y;
             dim = r->_w;
         }
-        *minor_axis = 0.f;
-        *major_axis += (major_axis_in_r > 0 ? +dim : -dim) / 2;
+        *major_axis = major_o + (major_axis_in_r > 0 ? +dim : -dim) / 2;
     }
 
     return closest;

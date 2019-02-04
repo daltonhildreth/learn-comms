@@ -20,6 +20,19 @@ void prewarm(float dt) {
     });
 }
 
+static void push_away(Dynamics& d, glm::vec2 collision) {
+    glm::vec3 away(collision.x, 0, collision.y);
+
+    // move object out of collision with some buffer.
+    d.pos += away + 0.001f * glm::normalize(away);
+
+    // stop motion into object
+    glm::vec3 vel_proj = away * glm::dot(away, d.vel_forehalf);
+    d.vel_forehalf += vel_proj;
+    glm::vec3 acc_proj = away * glm::dot(away, d.acc);
+    d.acc += acc_proj;
+}
+
 void simulate(float dt) {
     POOL.for_<Dynamics>([&](Dynamics& d, const Entity& e) {
         // leap-frog
@@ -45,14 +58,11 @@ void simulate(float dt) {
 
             // collision! undo the motion at the collision!
             for (auto coll : in_dyn) {
-                //d.pos += glm::vec3(coll.second.x, 0, coll.second.y);
-                d.force += 10.f * glm::vec3(coll.second.x, 0, coll.second.y);
+                push_away(d, coll.second);
             }
 
             for (auto coll : in_st) {
-                // d.pos += ??? Why are they teleporting if I do this??
-                // I tried doing something based on momentum, but 10.f works...
-                d.force += 10.f * glm::vec3(coll.second.x, 0, coll.second.y);
+                push_away(d, coll.second);
             }
         }
 
