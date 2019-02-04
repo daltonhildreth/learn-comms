@@ -115,28 +115,24 @@ class Evaluation:
         print("result\n", self.result)
         print("M\n", self.M)
 
+def build_subset(scene):
+    return ("" if scene["with_comm"] else "no") + "comm_" +\
+        ("" if scene["with_render"] else "no") + "render"
 
 def simulate(M, trial, scene):
-    subset = ("" if scene["with_comm"] else "no") + "comm_" +\
-        ("" if scene["with_render"] else "no") + "render"
+    subset = build_subset(scene)
+    trial_path = str(scene["id"]) + "/" + subset + "/" + trial
 
     with open('data/comms.config', 'w') as config_clone:
         write_config(config_clone, M)
-    copyfile(
-        'data/comms.config', 'data/' + str(scene["id"])
-        + "/" + subset + "/" + trial + ".config"
-    )
+    copyfile('data/comms.config', 'data/' + trial_path + ".config")
 
     prog = "build/bin/" + subset
     args = [str(scene["id"]), str(scene["seed"])]
     print(prog, " ".join(args))
     system(prog + " " + " ".join(args))
 
-    copyfile(
-        "data/comms.result", "data/" + str(scene["id"]) + "/"
-        + subset + "/" + trial + ".result"
-    )
-
+    copyfile('data/comms.result', 'data/' + trial_path + ".result")
     with open('data/comms.result', 'r') as result_clone:
         return result_metric(read_result(result_clone))
 
@@ -160,6 +156,11 @@ def PSO(scene, n, w_inertia=0.2, w_local=0.2, w_global=0.2):
         p.debug(base.result, Mg)
         particles += [p]
 
+    subset = build_subset(scene)
+    conv_path = str(scene["id"]) + "/" + subset + "/convergence.txt"
+    with open("data/" + conv_path, 'w') as f_conv:
+        f_conv.write("convergence value per full iteration of all particles\n")
+ 
     convergent = False
     enough_iter = False
     i = 0
@@ -186,7 +187,10 @@ def PSO(scene, n, w_inertia=0.2, w_local=0.2, w_global=0.2):
         enough_iter = i >= enough
         i += 1
         # convergent = False  # TODO
-        convergent = max(sum([np.linalg.norm(p.Mv) for p in particles])) < 1e-9
+        convergence = abs(max([np.linalg.norm(p.Mv) for p in particles]))
+        with open("data/" + conv_path, 'a') as f_conv:
+            f_conv.write("i: " + str(i) + ",  c: " + str(convergence)+"\n")
+        convergent = convergence < 1e-9
 
     return (particles, convergent, enough_iter)
 
