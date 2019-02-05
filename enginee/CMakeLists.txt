@@ -31,12 +31,10 @@ source_group("lib" FILES ${PROJECT_LIB})
 
 add_definitions(
     -DGLFW_INCLUDE_NONE
+    -DPROJECT_DIR="${PROJECT_SOURCE_DIR}/"
     -DPROJECT_SRC_DIR="${PROJECT_SOURCE_DIR}/enginee/"
 )
 
-add_definitions(-DSTOP_COLLISION)
-add_definitions(-DDATA_DIR="${PROJECT_SOURCE_DIR}/data/")
-add_definitions(-DPRE_R="")#"\no\"
 #add_definitions(-DPRM_DEBUG)
 
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
