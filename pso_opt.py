@@ -204,9 +204,7 @@ def PSO(scene, meta_args):
     # RETURN HERE
 
 def run_scenario(run_name, scene, meta_args):
-    makedirs("data/%s/" % run_name)
-    mkdir("data/%s/%d_train/" % (run_name, scene.id))
-    makedirs("data/%s/results/%d/" % (run_name, scene.id))
+    makedirs("data/%s/%d_train/" % (run_name, scene.id))
     Evaluation.data_dir = "%s/%d_train" % (run_name, scene.id)
     PSO(scene, meta_args)
     Evaluation.i = 0
