@@ -1,22 +1,27 @@
-import os
+from os import listdir
+from itertools import chain
 
 def minimize(directory):
-    minv = float('inf')
-    minf = ""
-    for filename in os.listdir(directory):
-        if (".result" in filename):
+    min_val = float('inf')
+    min_file = ""
+    for filename in listdir(directory):
+        if ".result" in filename:
+            # grab the # of t#.result
             i = int(filename.split('.')[0][1:])
+
+            # skip baseline
             if i == 0:
                  continue
-            with open(directory + filename, "r") as f:
-                f.readline()
-                r = f.readline().strip()
-                if minv > float(r):
-                    minv = float(r)
-                    minf = filename
-    return (minf, minv)
 
-for scene in range(0, 10+1):
-    print(minimize("data/"+str(scene)+"/comm_norender/"))
-for scene in range(14, 17+1):
-    print(minimize("data/"+str(scene)+"/comm_norender/"))
+            with open(directory + filename, "r") as f:
+                avg_vel = float(f.readline().strip())
+                confident_time = float(f.readline().strip())
+                val = confident_time
+
+                if val < min_val:
+                    min_val = val
+                    min_file = filename
+    return (min_file, min_val)
+
+for scene in chain(range(0, 10+1), range(14, 17+1)):
+    print(str(scene), minimize("data/"+str(scene)+"/"))
