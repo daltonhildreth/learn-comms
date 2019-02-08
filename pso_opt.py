@@ -110,11 +110,11 @@ class Particle:
         self.vel[r][c] = momentum + local_gravity + global_gravity
 
     async def attempt_move(self):
-        self.iters += 1
         self.pos = await simulate(
             self.scene, self.vel + self.pos.config, self.data_dir,
             "%d_p%d" % (self.iters, self.id)
         )
+        self.iters += 1
 
     def minimize(self, global_min):
         if self.pos.score < self.local_min.score:
@@ -145,21 +145,23 @@ class HyperParameters:
         self.max_iters = max_iters
         self.max_convergence = max_convergence
 
-async def simulate(scene, config, data_dir, save_path):
+async def simulate(scene, config, data_dir, save_name):
     prog = "build/bin/comm_norender"
     # the 0 does not matter since we are using a _norender build
+    data_dir += "iters/"
     args = [str(i) for i in [scene.id, scene.seed, 0, data_dir]]
     data_dir = "data/" + data_dir
-    save = (data_dir, save_path)
+    save = (data_dir, save_name, save_name)
 
+    makedirs("%s/%s/" % (data_dir, save_name))
     sim_config = "%s/comms.config" % data_dir
     with open(sim_config, 'w') as config_file:
         write_config(config_file, config)
-    copyfile(sim_config, "%s/%s.config" % save)
+    copyfile(sim_config, "%s/%s/%s.config" % save)
 
     print(" ".join([prog] + args))
-    with open("%s/%s.log" % save, "w") as logout_file:
-        with open("%s/%s.err" % save, "w") as logerr_file:
+    with open("%s/%s/%s.log" % save, "w") as logout_file:
+        with open("%s/%s/%s.err" % save, "w") as logerr_file:
             sim = await asyncio.create_subprocess_exec(
                 *([prog] + args),
                 stdout=logout_file,
@@ -168,7 +170,7 @@ async def simulate(scene, config, data_dir, save_path):
             await sim.wait()
 
     sim_result = "%s/comms.result" % data_dir
-    copyfile(sim_result, "%s/%s.result" % save)
+    copyfile(sim_result, "%s/%s/%s.result" % save)
     with open(sim_result, 'r') as result_clone:
         return Point(config, read_result(result_clone))
 
@@ -193,7 +195,7 @@ async def PSO(data_dir, scene, hypers):
             p.debug(trace, baseline, global_min)
         particles += [p]
 
-    conv_path = data_dir + "/convergence.txt"
+    conv_path = data_dir + "/convergence.log"
     with open("data/" + conv_path, 'w') as f_conv:
         f_conv.write("convergence value per full iteration of all particles\n")
  
@@ -217,7 +219,7 @@ async def PSO(data_dir, scene, hypers):
     return "iterated"
 
 async def run_scenario(run_name, scene, meta_args):
-    data_dir = "%s/%d_train" % (run_name, scene.id)
+    data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
     return await PSO(data_dir, scene, meta_args)
 
