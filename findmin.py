@@ -16,8 +16,10 @@ def minimize(directory):
     min_file = ""
     for filename in listdir(directory):
         if ".result" in filename and "comms" not in filename:
-            # grab the # of #.result
-            i = int(filename.split('.')[0])
+            # grab the # of #_p#.result
+            sim = filename.split('.')[0].split("_p")
+            i = int(sim[0])
+            p = int(sim[1]) if len(sim) > 1 else None
 
             # skip baseline
             if i == 0:
@@ -35,12 +37,14 @@ if __name__ == "__main__":
         src = "data/%s/%d_train/" % (argv[1], scene)
         dst = "data/%s/results/%d_min/" % (argv[1], scene)
         base_val, min_file, min_val = minimize(src)
-        print(
-            scene,
-            "\tbest at config:", min_file,
-            "\tw/ conf_time:", min_val,
-            "\tvs base conf_time:", base_val
-        )
+        with open("data/%s/results/best.txt", "w") as best:
+            best.write(
+                scene
+                + "\tbest at config: " + min_file
+                + "\tw/ conf_time: " + min_val
+                + "\tvs base conf_time: " + base_val
+                + "\n"
+            )
         makedirs(dst)
         copyfile(src + min_file + ".config", dst + "comms.config")
         copyfile(src + min_file + ".result", dst + min_file + ".result")
