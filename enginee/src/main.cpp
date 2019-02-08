@@ -141,9 +141,14 @@ int main(int argc, char** argv) {
         #endif
         return EXIT_FAILURE;
     }
+
     demo::init(static_cast<unsigned>(scn_i));
     #ifndef NO_COMM
-    comm::init();
+    std::string data_dir = std::string(PROJECT_DIR) + "/data/";
+    if (argc > 4) {
+        data_dir += argv[4];
+    }
+    comm::init(data_dir);
     #endif
     ai::init();
     physics::init();
@@ -196,9 +201,8 @@ int main(int argc, char** argv) {
         }
 
         double total_time = frame_time - init_time;
-        UNUSED(total_time);
         //frame_time.delta_s()
-        all_done = demo::run(1.f/60.f, static_cast<float>(total_frames)/60.f, total_frames);
+        all_done = demo::run(1.f/60.f, total_time, total_frames);
         #ifndef NO_RENDER
         glfwSetWindowShouldClose(window, all_done);
         #endif
@@ -226,14 +230,8 @@ int main(int argc, char** argv) {
         glfwSwapBuffers(window);
         #endif
     }
-    //double total_time = static_cast<double>(total_frames)/60.0;//frame_time - init_time;
-    double avg_velocity = physics::avg_velocity;
 
-    ofstream results;
-    results.open(std::string(DATA_DIR)+"/"+std::string(PRE_R)+"comms.result");
-    float group_time = demo::run_avg_time + demo::run_std_time * 3;
-    results << avg_velocity << "\n" << group_time << "\n";
-    results.close();
+    comm::terminate();
 
     #ifndef NO_RENDER
     //free all memory and libraries

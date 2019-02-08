@@ -1,8 +1,10 @@
 #include "comm.h"
 #include "io.h"
 #include "Pool.h"
+#include "demo/demo.h"
+#include "ai/physics.h"
 #include <sstream>
-#include <iostream>
+#include <fstream>
 
 namespace comm {
 //one 4x7 matrix I split into four for easy multiplication later
@@ -11,20 +13,11 @@ glm::mat2x4 M_relv; // relative velocity input
 glm::mat2x4 M_relp; // relative position input
 glm::vec4 M_dist; // relative distance input
 
-/*
-static void print_v3as2(glm::vec3 v, char c) {
-    std::cout << c << " " << v.x << " "<<v.z << "\n";
-}
-static void print_v2(glm::vec2 v, char c) {
-    std::cout << c << " " << v.x << " " << v.y << "\n";
-}
-static void print_v3(glm::vec3 v, char c) {
-    std::cout << c << " " << v.x << " " << v.y << " " << v.z << "\n";
-}
-*/
+std::string data_dir;
 
-void init() {
-    std::string config_file = std::string(DATA_DIR) + "/comms.config";
+void init(std::string data_dir_) {
+    comm::data_dir = data_dir_;
+    std::string config_file = comm::data_dir + "/comms.config";
     std::string config_str = *read_file(config_file);
 
     std::stringstream ss(config_str);
@@ -44,6 +37,14 @@ void init() {
                 M_dist[row] = std::stof(item);
         }
     }
+}
+
+void terminate() {
+    std::ofstream results;
+    results.open(comm::data_dir + "/comms.result");
+    float group_time = demo::run_avg_time + demo::run_std_time * 3;
+    results << physics::avg_velocity << "\n" << group_time << "\n";
+    results.close();
 }
 
 void run() {
