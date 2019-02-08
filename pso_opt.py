@@ -6,6 +6,7 @@ from subprocess import Popen, PIPE
 from itertools import chain
 import argparse
 import numpy as np
+import asyncio
 
 M_SHAPE = (4, 7)
 N_COMM = 2
@@ -33,6 +34,14 @@ def result_metric(result):
     return confident_time
 
 
+def pretty_mat(np_m):
+    s = ""
+    for r in np_m:
+        for c in r:
+            s += " %+.5f" % c
+        s +="\n"
+    return s
+
 class Particle:
     def __init__(self, id_, min_config, max_config, scene, data_dir):
         self.id = id_
@@ -41,18 +50,16 @@ class Particle:
         self.scene = scene
         self.data_dir = data_dir
         self.save = "%d_p%d" % (self.iters, self.id)
+        # intentionally invalid, will be replaced at next minimize with self.pos
+        self.local_min = Point()
 
-        spawn_config = np.zeros(shape=M_SHAPE)
-        for r in range(len(spawn_config)):
-            for c in range(len(spawn_config[r])):
+        self.pos = Point(np.zeros(shape=M_SHAPE))
+        for r in range(len(self.pos.config)):
+            for c in range(len(self.pos.config[r])):
                 # Don't fill in values that are redundant to TTC
                 if r > N_COMM - 1 and c > N_COMM - 1:
                     continue
-                spawn_config[r][c] = uniform(min_config[r][c], max_config[r][c])
-        self.pos = simulate(self.scene, spawn_config, self.data_dir, self.save)
-
-        # intentionally invalid, will be replaced at next minimize with self.pos
-        self.local_min = Point()
+                self.pos.config[r][c] = uniform(min_config[r][c], max_config[r][c])
 
         self.vel = np.zeros(shape=M_SHAPE)
         for r in range(len(self.vel)):
@@ -63,17 +70,23 @@ class Particle:
                 mag = abs(max_config[r][c] - min_config[r][c])
                 self.vel[r][c] = uniform(-mag, mag)
 
-    def debug(self, base, global_min):
-        print("\t\ti ", self.iters)
-        print("\t\tparticle id ", self.id)
-        print("\t\tprocess id ", getpid())
-        print("xr ", self.pos.score)
-        print("norm xr/b ", self.pos.score / base.score)
-        print("Gr ", global_min.score)
-        print("norm xr/Gr ", self.pos.score / global_min.score)
-        print("xM\n", self.pos.config)
-        print("vM\n", self.vel)
-        print("gM\n", global_min.config)
+    async def kickstart(self):
+        vel = self.vel
+        self.vel = np.zeros(shape=M_SHAPE)
+        await self.attempt_move()
+        self.vel = vel
+
+    def debug(self, trace, base, global_min):
+        trace.write("\t\ti %s\n" % self.iters)
+        trace.write("\t\tparticle id %s\n" % self.id)
+        trace.write("\t\tprocess id %d\n" % getpid())
+        trace.write("xr %f\n" % self.pos.score)
+        trace.write("norm xr/b %f\n" % self.pos.score / base.score)
+        trace.write("Gr %f\n" % global_min.score)
+        trace.write("norm xr/Gr %f\n" % self.pos.score / global_min.score)
+        trace.write("xM\n%s\n" % pretty_mat(self.pos.config))
+        trace.write("vM\n%s\n" % pretty_mat(self.vel))
+        trace.write("gM\n%s\n" % pretty_mat(global_min.config))
 
     def gravitate(self, global_min, hypers):
         for r in range(M_SHAPE[0]):
@@ -97,9 +110,9 @@ class Particle:
 
         self.vel[r][c] = momentum + local_gravity + global_gravity
 
-    def attempt_move(self):
+    async def attempt_move(self):
         self.iters += 1
-        self.pos = simulate(
+        self.pos = await simulate(
             self.scene, self.vel + self.pos.config, self.data_dir, self.save
         )
 
@@ -132,7 +145,7 @@ class HyperParameters:
         self.max_iters = max_iters
         self.max_convergence = max_convergence
 
-def simulate(scene, config, data_dir, save_path):
+async def simulate(scene, config, data_dir, save_path):
     prog = "build/bin/comm_norender"
     # the 0 does not matter since we are using a _norender build
     args = [str(i) for i in [scene.id, scene.seed, 0, data_dir]]
@@ -145,7 +158,14 @@ def simulate(scene, config, data_dir, save_path):
     copyfile(sim_config, "%s/%s.config" % save)
 
     print(" ".join([prog] + args))
-    p = Popen([prog] + args) # yield after this?
+    with open("%s/%s.log" % save, "w") as logout_file:
+        with open("%s/%s.err" % save, "w") as logerr_file:
+            sim = await asyncio.create_subprocess_exec(
+                [prog] + args,
+                stdout=logout_file,
+                stderr=logerr_file
+            )
+            await sim.wait()
 
     sim_result = "%s/comms.result" % data_dir
     copyfile(sim_result, "%s/%s.result" % save)
@@ -153,10 +173,11 @@ def simulate(scene, config, data_dir, save_path):
         return Point(config, read_result(result_clone))
 
 
-def PSO(data_dir, scene, hypers):
+async def PSO(data_dir, scene, hypers):
     base_scn = copy(scene)
-    baseline = simulate(base_scn, np.zeros(shape=M_SHAPE), data_dir, str(0))
-    # === SIMULATE BLOCKS HERE ===
+    baseline = await simulate(
+        base_scn, np.zeros(shape=M_SHAPE), data_dir, str(0)
+    )
     print("baseline ==== ", baseline.score)
     global_min = Point()
 
@@ -166,9 +187,10 @@ def PSO(data_dir, scene, hypers):
     particles = []
     for p in range(hypers.n_particles):
         p = Particle(p, min_config, max_config, scene, data_dir)
-        # === SIMULATE BLOCKS HERE ===
+        await p.kickstart()
         global_min = p.minimize(global_min)
-        p.debug(baseline, global_min)
+        with open("%s/opt.log" % data_dir, 'a') as trace:
+            p.debug(trace, baseline, global_min)
         particles += [p]
 
     conv_path = data_dir + "/convergence.txt"
@@ -179,24 +201,25 @@ def PSO(data_dir, scene, hypers):
         for p in particles:
             # integrate particle swarm dynamics
             p.gravitate(global_min, hypers)
-            p.attempt_move()
-            # === SIMULATE BLOCKS HERE ===
+            await p.attempt_move()
 
             # update known minima
             global_min = p.minimize(global_min)
-            p.debug(baseline, global_min)
+            with open("%s/opt.log" % data_dir, 'a') as trace:
+                p.debug(trace, baseline, global_min)
 
         # the potential variation of the fastest particle
         convergence = abs(max([np.linalg.norm(p.vel) for p in particles]))
         with open("data/" + conv_path, 'a') as f_conv:
             f_conv.write("i: " + str(i) + ",  c: " + str(convergence)+"\n")
         if convergence < hypers.max_convergence:
-            return
+            return "converged"
+    return "iterated"
 
-def run_scenario(run_name, scene, meta_args):
+async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train" % (run_name, scene.id)
     makedirs("data/" + data_dir)
-    PSO(data_dir, scene, meta_args)
+    return await PSO(data_dir, scene, meta_args)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -213,45 +236,32 @@ if __name__ == '__main__':
     parser.add_argument("--convergence", type=float, default=1e-9)
     args = parser.parse_args()
 
-    # High-Level what should be going on.
-    # while optimizing:
-    #    for scene in scenes:
-    #        run(scene):
-    #            #...
-    #            next(PSO(scene)):
-    #                #...
-    #                R = yield from simulate(scene):
-    #                    #...
-    #                    o = Popen
-    #                    while o.poll() is not None:
-    #        /---------------yield None
-    #        \-------------->
-    #                ^       #...
-    #                \---yield r
-    #                while iterating:
-    #                    for p in particles:
-    #                        #...
-    #                        p.R = yield from simulate(scene):
-    #                            #...
-    #                            o = Popen
-    #                            while o.poll() is not None:
-    #        /-----------------------yield None
-    #        \---------------------->
-    #                        ^   #...
-    #                        \---yield r
-    #                    #...
-    #                #...
-    #            #...
-    for scene in chain(range(0, 10 + 1), range(14, 17 + 1)):
-        run_scenario(
-            args.name,
-            Scene(scene, args.seed),
-            HyperParameters(
-                args.n_particles,
-                args.w_inertia,
-                args.w_local,
-                args.w_global,
-                args.iters,
-                args.convergence
+    # For a high-Level of what should be going on, see test_async.py
+    event_loop = asyncio.get_event_loop()
+    try:
+        scenes = chain(range(0, 10 + 1), range(14, 17 + 1))
+        tasks = (
+            run_scenario(
+                args.name,
+                Scene(scene, args.seed),
+                HyperParameters(
+                    args.n_particles,
+                    args.w_inertia,
+                    args.w_local,
+                    args.w_global,
+                    args.iters,
+                    args.convergence
+                )
             )
+            for scene in scenes
         )
+        optimize = asyncio.gather(*tasks, return_exceptions=True)
+        event_loop.run_until_complete(optimize)
+        for outcome in optimize.result():
+            if isinstance(outcome, Exception):
+                print("ERROR", outcome)
+            else:
+                print(outcome)
+
+    finally:
+        event_loop.close()
