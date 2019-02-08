@@ -49,7 +49,6 @@ class Particle:
         self.iters = 1
         self.scene = scene
         self.data_dir = data_dir
-        self.save = "%d_p%d" % (self.iters, self.id)
         # intentionally invalid, will be replaced at next minimize with self.pos
         self.local_min = Point()
 
@@ -81,9 +80,9 @@ class Particle:
         trace.write("\t\tparticle id %s\n" % self.id)
         trace.write("\t\tprocess id %d\n" % getpid())
         trace.write("xr %f\n" % self.pos.score)
-        trace.write("norm xr/b %f\n" % self.pos.score / base.score)
+        trace.write("norm xr/b %f\n" % (self.pos.score / base.score))
         trace.write("Gr %f\n" % global_min.score)
-        trace.write("norm xr/Gr %f\n" % self.pos.score / global_min.score)
+        trace.write("norm xr/Gr %f\n" % (self.pos.score / global_min.score))
         trace.write("xM\n%s\n" % pretty_mat(self.pos.config))
         trace.write("vM\n%s\n" % pretty_mat(self.vel))
         trace.write("gM\n%s\n" % pretty_mat(global_min.config))
@@ -113,7 +112,8 @@ class Particle:
     async def attempt_move(self):
         self.iters += 1
         self.pos = await simulate(
-            self.scene, self.vel + self.pos.config, self.data_dir, self.save
+            self.scene, self.vel + self.pos.config, self.data_dir,
+            "%d_p%d" % (self.iters, self.id)
         )
 
     def minimize(self, global_min):
@@ -161,7 +161,7 @@ async def simulate(scene, config, data_dir, save_path):
     with open("%s/%s.log" % save, "w") as logout_file:
         with open("%s/%s.err" % save, "w") as logerr_file:
             sim = await asyncio.create_subprocess_exec(
-                [prog] + args,
+                *([prog] + args),
                 stdout=logout_file,
                 stderr=logerr_file
             )
@@ -189,7 +189,7 @@ async def PSO(data_dir, scene, hypers):
         p = Particle(p, min_config, max_config, scene, data_dir)
         await p.kickstart()
         global_min = p.minimize(global_min)
-        with open("%s/opt.log" % data_dir, 'a') as trace:
+        with open("data/%s/opt.log" % data_dir, 'a') as trace:
             p.debug(trace, baseline, global_min)
         particles += [p]
 
@@ -205,7 +205,7 @@ async def PSO(data_dir, scene, hypers):
 
             # update known minima
             global_min = p.minimize(global_min)
-            with open("%s/opt.log" % data_dir, 'a') as trace:
+            with open("data/%s/opt.log" % data_dir, 'a') as trace:
                 p.debug(trace, baseline, global_min)
 
         # the potential variation of the fastest particle
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     # For a high-Level of what should be going on, see test_async.py
     event_loop = asyncio.get_event_loop()
     try:
-        scenes = chain(range(0, 10 + 1), range(14, 17 + 1))
+        scenes = list(chain(range(0, 10 + 1), range(14, 17 + 1)))
         tasks = (
             run_scenario(
                 args.name,
@@ -257,11 +257,11 @@ if __name__ == '__main__':
         )
         optimize = asyncio.gather(*tasks, return_exceptions=True)
         event_loop.run_until_complete(optimize)
-        for outcome in optimize.result():
+        for i, outcome in enumerate(optimize.result()):
             if isinstance(outcome, Exception):
-                print("ERROR", outcome)
+                print("ERROR", i, scenes[i], outcome)
             else:
-                print(outcome)
+                print(i, scenes[i], outcome)
 
     finally:
         event_loop.close()
