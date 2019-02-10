@@ -11,7 +11,7 @@ struct CommComp {
     void buf_in(glm::vec4 v) {
         // distributed non-linearity
         for (int i = 0; i < 4; ++i) {
-            v[i] = glm::clamp<float>(v[i], -1, 1);
+            v[i] = glm::clamp(v[i], -1.f, 1.f);
         }
         c_buf = glm::vec2(v[0], v[1]);
         v_buf = glm::vec2(v[2], v[3]);

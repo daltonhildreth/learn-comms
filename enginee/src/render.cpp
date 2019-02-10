@@ -65,6 +65,7 @@ GLuint create_tex(std::string path) {
     return tex;
 }
 
+#ifndef NO_RENDER
 static glm::vec3 uv2rgb(glm::vec3 Luv) {
     glm::vec3 rgb = {
     //Here the 0.5 in each equation is just the desired luminance Y, you can play with it
@@ -77,8 +78,8 @@ static glm::vec3 uv2rgb(glm::vec3 Luv) {
     //Clamp the results to 0 to 1
     return glm::max(glm::vec3(0.f), glm::min(glm::vec3(1.f), rgb));
 }
+#endif
 
-#ifndef NO_RENDER
 static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     // https://www.easyrgb.com/en/math.php
     Lab[0] *= 100.f;
@@ -122,6 +123,7 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     return rgb;
 }
 
+#ifndef NO_RENDER
 static glm::vec3 Lx_2rg_(glm::vec3 Lx_) {
     float x = Lx_[1];
     return x < 0 ? glm::vec3(-x, 0, 0) : glm::vec3(0, x, 0);
@@ -137,7 +139,7 @@ void init(glm::vec<2, int> dims) {
     ui::add_handler(input_key);
     ui::add_handler(input_cursor);
     ui::add_handler(input_scroll);
-    comm_vis = uv2rgb;
+    comm_vis = Lab2rgb;
 
     //build material
     mtl = unique_ptr<Shader>(new Shader());
