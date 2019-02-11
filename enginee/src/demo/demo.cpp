@@ -103,6 +103,18 @@ static auto make_hole_wall(float gap, float scale) {
         return glm::vec2(x, y);
     };
 }
+static auto make_hall(float gap, float scale) {
+    return [gap, scale](unsigned i) {
+        float side = ((i % 2) == 0 ? 1.f : -1.f);
+        float width = static_cast<float>((i + 2 % 4) / 4);
+        float xside = (i % 4 < 2 ? 1.f : -1.f);
+        float x = xside * scale * width;
+        float y = side * .5f * (gap + scale);
+        return glm::vec2(x, y);
+    };
+}
+
+// TODO: compose/union/intersect
 
 struct Scene {
     unsigned num_robos;
@@ -267,41 +279,45 @@ static Scene make_scene(unsigned scn) {
         break;
     }
 
-    case 11: // escaping room
-        assert(false);
-        //        s.num_robos = 40u;
-        //        s.num_walls = 120u;
-        //        s.wall_scale = 2.0f;
-        //        s.max_duration = ;
-        //        s.pos_of = ;
-        //        s.goal_of = ;
-        //        s.wall_shape_of = ;
-        //        s.wall_pos_of = ;
-        break;
+    // escaping room
+    case 11:
+        // s.num_robos = 40u;
+        // s.num_walls = 120u;
+        // s.wall_scale = 2.0f;
+        // s.max_duration = 90.0f;
+        // s.pos_of = ;
+        // s.goal_of = ;
+        // s.wall_shape_of = ;
+        // s.wall_pos_of = ;
+        // break;
 
-    case 12: // crowd
-        assert(false);
-        //       s.num_robos = 100u;
-        //       s.num_walls = 0u;
-        //       s.wall_scale = 0.0f;
-        //       s.max_duration = ;
-        //       s.pos_of = ;
-        //       s.goal_of = ;
-        //       s.wall_shape_of = ;
-        //       s.wall_pos_of = ;
-        break;
+    // dense crowd & groups
+    case 12:
+        // s.num_robos = 200u;
+        // s.num_walls = 0u;
+        // s.wall_scale = 0.0f;
+        // s.max_duration = 50.f;
+        // s.pos_of = ;
+        // s.goal_of = ;
+        // s.wall_shape_of = ;
+        // s.wall_pos_of = ;
+        // break;
 
-    case 13: // two tight formations of 20 going down a hall
-        assert(false);
-        //        s.num_robos = 40u;
-        //        s.num_walls = 30u;
-        //        s.wall_scale = 2.0f;
-        //        s.max_duration = ;
-        //        s.pos_of = ;
-        //        s.goal_of = ;
-        //        s.wall_shape_of = ;
-        //        s.wall_pos_of = ;
+    case 13: { // two tight formations of 20 going down a hall
+        s.num_robos = 40u;
+        s.num_walls = 18u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 90.0f;
+        std::array<Regiment, 2> r{
+            center({{1, 0}, {-3, 0}, {.5f, .7f}, 5, 20}),
+            center({{-1, 0}, {3, 0}, {.5f, .7f}, 5, 20}),
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = mirror_x_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = make_hall(3.f, s.wall_scale);
         break;
+    }
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
