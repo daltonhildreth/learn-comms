@@ -1,6 +1,6 @@
 #include "LMP.h"
-#include "Pool.h"
 #include "BVH.h"
+#include "Pool.h"
 #include <util/Seeder.h>
 //#include "debug.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
@@ -8,9 +8,9 @@
 #undef GLM_ENABLE_EXPERIMENTAL
 #include <limits>
 
-//TODO: properly polymorph for all BoundingVolumes
+// TODO: properly polymorph for all BoundingVolumes
 float LMP::ttc(BoundVolume& i, glm::vec2 iv, BoundVolume& j, glm::vec2 jv) {
-    //I wish there was a way I didn't have to check the types..
+    // I wish there was a way I didn't have to check the types..
     if (i._vt == BoundVolume::volume_type::CIRC) {
         Circ& c = dynamic_cast<Circ&>(i);
         if (j._vt == BoundVolume::volume_type::CIRC) {
@@ -18,13 +18,12 @@ float LMP::ttc(BoundVolume& i, glm::vec2 iv, BoundVolume& j, glm::vec2 jv) {
         } else if (j._vt == BoundVolume::volume_type::RECT) {
             return ttc_(c, iv, dynamic_cast<Rect&>(j), jv);
         }
-    }
-    else if (i._vt == BoundVolume::volume_type::RECT) {
+    } else if (i._vt == BoundVolume::volume_type::RECT) {
         Rect& r = dynamic_cast<Rect&>(i);
         if (j._vt == BoundVolume::volume_type::RECT) {
             return LMP::ttc_(r, iv, dynamic_cast<Rect&>(j), jv);
         } else if (j._vt == BoundVolume::volume_type::CIRC) {
-           return LMP::ttc_(dynamic_cast<Circ&>(j), jv, r, iv);
+            return LMP::ttc_(dynamic_cast<Circ&>(j), jv, r, iv);
         }
     }
     return std::numeric_limits<float>::max();
@@ -48,7 +47,7 @@ float LMP::ttc_(Circ& i, glm::vec2 iv, Circ& j, glm::vec2 jv) {
     return cspace_circ.intersect(j._o, jv - iv);
 }
 
-//finds the ttc via a component analysis of the velocity vectors
+// finds the ttc via a component analysis of the velocity vectors
 float LMP::ttc_(Rect& i, glm::vec2 iv, Rect& j, glm::vec2 jv) {
     Rect r = Rect(i._o, i._w + j._w, i._h + j._h);
     glm::vec2 dv = jv - iv;
@@ -103,25 +102,34 @@ glm::vec2 LMP::ttc_forces_(double ttc, glm::vec2 dir) {
     if (fabs(len) > 0.000000001)
         dir /= len;
 
-    double t_h = TTC_THRESHOLD;//seconds
+    double t_h = TTC_THRESHOLD; // seconds
     double mag = 0;
     if (ttc >= 0 && ttc <= t_h)
         mag = (t_h - ttc) / (ttc + 0.001);
     mag = mag > 20 ? 20 : mag;
     return glm::vec2(mag * dir.x, mag * dir.y);
 }
-glm::vec2 LMP::ttc_forces(Dynamics& da, BoundVolume& bva, BoundVolume& bvb,
-        float ttc) {
+glm::vec2 LMP::ttc_forces(
+    Dynamics& da,
+    BoundVolume& bva,
+    BoundVolume& bvb,
+    float ttc
+) {
     glm::vec2 V_dt(da.vel.x * ttc, da.vel.z * ttc);
     glm::vec2 dir = (bva._o + V_dt - bvb._o);
     return ttc_forces_(ttc, dir);
 }
-glm::vec2 LMP::ttc_forces(Dynamics& da, BoundVolume& bva,
-        Dynamics& db, BoundVolume& bvb, float ttc) {
+glm::vec2 LMP::ttc_forces(
+    Dynamics& da,
+    BoundVolume& bva,
+    Dynamics& db,
+    BoundVolume& bvb,
+    float ttc
+) {
     glm::vec2 V_dt(da.vel.x * ttc, da.vel.z * ttc);
     glm::vec2 bV_dt(db.vel.x * ttc, db.vel.z * ttc);
-    //glm::vec2 perturb(0.000001, 0.000001);
-    glm::vec2 dir = (bva._o + V_dt - bvb._o - bV_dt);// +perturb);
+    // glm::vec2 perturb(0.000001, 0.000001);
+    glm::vec2 dir = (bva._o + V_dt - bvb._o - bV_dt); // +perturb);
     return ttc_forces_(ttc, dir);
 }
 
@@ -170,7 +178,8 @@ glm::vec2 boid_force(Agent* a, BVH* dynamic_bvh, std::vector<Agent*> dynamics) {
         glm::vec2 dist = boid->bv->o - a->bv->o;
         float fi = static_cast<float>(i);
         if (glm::dot(dist, dist) < align_r_look * align_r_look) {
-            avg_vel = (avg_vel * fi + glm::vec2(boid->dyn->vel.x, boid->dyn->vel.z)) / (fi + 1.f);
+            avg_vel = (avg_vel * fi + glm::vec2(boid->dyn->vel.x,
+boid->dyn->vel.z)) / (fi + 1.f);
         }
         if (glm::dot(dist, dist) < cohes_r_look * cohes_r_look) {
             avg_pos = (avg_pos * fi + glm::vec2(boid->bv->o)) / (fi + 1.f);
@@ -192,7 +201,8 @@ glm::vec2 boid_force(Agent* a, BVH* dynamic_bvh, std::vector<Agent*> dynamics) {
     if (norm != 0) {
         avg_vel /= norm;
     }
-    align_force = (avg_vel - glm::vec2(a->dyn->vel.x, a->dyn->vel.z)) * boid_speed;
+    align_force = (avg_vel - glm::vec2(a->dyn->vel.x, a->dyn->vel.z)) *
+boid_speed;
 
     // cohesion force //
     //average cohesion; pull towards that
@@ -217,7 +227,7 @@ glm::vec2 LMP::calc_sum_force(
     glm::vec2 goal_vel;
     glm::vec2 goal_F(0);
 
-    //if there is a plan, follow it
+    // if there is a plan, follow it
     auto& a = *POOL.get<Agent>(*e);
     auto& bv = **POOL.get<BoundVolume*>(*e);
     auto& d = *POOL.get<Dynamics>(*e);
@@ -227,22 +237,22 @@ glm::vec2 LMP::calc_sum_force(
         std::uniform_real_distribution<float> perturb(-.01f, .01f);
         glm::vec2 fuzzy_goal = a.local_goal + glm::vec2(perturb(s.gen()));
         glm::vec2 diff = fuzzy_goal - bv._o;
-        //prevents overshooting
+        // prevents overshooting
         goal_vel = speed * (diff / glm::max(speed, glm::length(diff)));
     } else {
         a.local_goal = bv._o;
         goal_vel = glm::vec2(0);
     }
 
-    goal_F = 2.0f*(goal_vel - glm::vec2(d.vel.x, d.vel.z));
+    goal_F = 2.0f * (goal_vel - glm::vec2(d.vel.x, d.vel.z));
 
     float real_speed = glm::length(d.vel);
 
     /* ttc - approximate */
     glm::vec2 ttc_F(0);
-    //keeping this small is very important for framerate; at some point I'll
-    //have to replace this circle with an extrusion or cone. ... or a shifted
-    //circle! this works pretty damn well! 1000 Agents at 30FPS!! :D
+    // keeping this small is very important for framerate; at some point I'll
+    // have to replace this circle with an extrusion or cone. ... or a shifted
+    // circle! this works pretty damn well! 1000 Agents at 30FPS!! :D
     glm::vec2 vel2d(d.vel.x, d.vel.z);
     Circ q(bv._o, real_speed * static_cast<float>(TTC_THRESHOLD));
 
@@ -253,12 +263,13 @@ glm::vec2 LMP::calc_sum_force(
         BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
         Dynamics& bd = *POOL.get<Dynamics>(*nearby);
         if (&a == b) {
-            //if the agents are the same, move on.
+            // if the agents are the same, move on.
             continue;
         }
-        double ttc = LMP::ttc(bv, glm::vec2(d.vel.x, d.vel.z),
-            bbv, glm::vec2(bd.vel.x, bd.vel.z));
-        if (ttc > TTC_THRESHOLD) {//seconds
+        double ttc = LMP::ttc(
+            bv, glm::vec2(d.vel.x, d.vel.z), bbv, glm::vec2(bd.vel.x, bd.vel.z)
+        );
+        if (ttc > TTC_THRESHOLD) { // seconds
             continue;
         }
         ttc_F += LMP::ttc_forces(d, bv, bd, bbv, static_cast<float>(ttc));
@@ -268,9 +279,9 @@ glm::vec2 LMP::calc_sum_force(
     for (auto& nearby_query : NNstatic) {
         Entity* nearby = nearby_query.first;
         BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
-        double ttc = LMP::ttc(bv, glm::vec2(d.vel.x, d.vel.z),
-            bbv, glm::vec2(0));
-        if (ttc > TTC_THRESHOLD) {//seconds
+        double ttc =
+            LMP::ttc(bv, glm::vec2(d.vel.x, d.vel.z), bbv, glm::vec2(0));
+        if (ttc > TTC_THRESHOLD) { // seconds
             continue;
         }
         ttc_F += ttc_forces(d, bv, bbv, static_cast<float>(ttc));
@@ -288,7 +299,6 @@ glm::vec2 LMP::calc_sum_force(
         }
     }
     */
-
 
     return goal_F + ttc_F;
 }

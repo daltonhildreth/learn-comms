@@ -1,11 +1,8 @@
-#ifndef COMM_H
-#define COMM_H
+#pragma once
 #include <string>
 
 namespace comm {
 void init(std::string data_dir);
 void terminate();
 void run();
-}
-
-#endif
+} // namespace comm

@@ -19,7 +19,7 @@ static void rebuild_dbvh(std::vector<Entity*> dynamics) {
     dynamic_bvh = new BVH(dynamics);
 }
 
-//todo: figure out how to handle varying size Cspace
+// todo: figure out how to handle varying size Cspace
 void init() {
     static const float root2 = static_cast<float>(sqrt(2));
     std::vector<Entity*> statics;
@@ -36,30 +36,32 @@ void init() {
     rebuild_dbvh(dynamics);
 
     if (dynamics.size() > static_cast<size_t>(0)) {
-        //cspace
+        // cspace
         std::vector<BoundVolume*> obs_bv;
         for (Entity* s : statics) {
             obs_bv.push_back(*POOL.get<BoundVolume*>(*s));
         }
         std::unique_ptr<Cspace2d> cs(
-            new Cspace2d(obs_bv, &**POOL.get<BoundVolume*>(*dynamics[0])));
+            new Cspace2d(obs_bv, &**POOL.get<BoundVolume*>(*dynamics[0]))
+        );
         std_cspace = cs.get();
 
-        //prm
-        glm::vec2 center_2d(0, 0);//org
-        glm::vec2 dim(50/2, 50/2);//w,h
-        dim *= 1;//cellsize
+        // prm
+        glm::vec2 center_2d(0, 0); // org
+        glm::vec2 dim(50 / 2, 50 / 2); // w,h
+        dim *= 1; // cellsize
         std_prm = new PRM(
             std::move(cs),
-            root2*6.f,
+            root2 * 6.f,
             0.f,
             glm::vec2(3.f, 3.f),
             2,
             center_2d - dim,
             center_2d + dim,
-            1.f);//1.f
+            1.f
+        ); // 1.f
 
-        #ifdef PRM_DEBUG
+#ifdef PRM_DEBUG
         auto& rm = std_prm->_roadmap;
         std::vector<Vertex> endpoints(rm->vertex_num());
         std::vector<GLuint> lines(2 * rm->edge_num());
@@ -95,9 +97,9 @@ void init() {
             uint16_t mid = POOL.create<Mesh>(LineMesh(endpoints, lines));
             POOL.attach<Mesh>(debug_map, mid);
         }
-        #endif
+#endif
 
-        //planners
+        // planners
         POOL.for_<Agent>([&](Agent& a, Entity&) {
             a.num_done = 0;
             a.cspace = std_cspace;
@@ -111,7 +113,7 @@ void init() {
     }
 }
 
-//move to AI/planner --- this is a force-based LMP
+// move to AI/planner --- this is a force-based LMP
 void update_agents() {
     std::vector<Entity*> statics;
     std::vector<Entity*> dynamics;
@@ -123,17 +125,17 @@ void update_agents() {
         }
     });
 
-    //probably very slow
+    // probably very slow
     delete static_bvh;
     rebuild_sbvh(statics);
-    //TODO: fix PRM
+    // TODO: fix PRM
 
     delete dynamic_bvh;
     rebuild_dbvh(dynamics);
 
     int replanned = 0;
     const int limit = 2;
-    POOL.for_<Agent>([&](Agent& a, Entity& e){
+    POOL.for_<Agent>([&](Agent& a, Entity& e) {
         a.goal_dist = glm::length2(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
@@ -142,9 +144,7 @@ void update_agents() {
             visible_next = a.cspace->line_of_sight(bv->_o, (*a.plan)[next]);
         }
         a.lost_frames = visible_next ? 0 : a.lost_frames + 1;
-        bool need_replan =
-            !a.has_plan()
-            || (a.done() && a.goal_dist > 1.f)
+        bool need_replan = !a.has_plan() || (a.done() && a.goal_dist > 1.f)
             || (!a.done() && !visible_next && a.lost_frames >= 360);
         if (replanned < limit && need_replan) {
             GMP::plan_one(a);
@@ -152,12 +152,9 @@ void update_agents() {
             a.lost_frames = 0;
         }
 
-        glm::vec2 f2d = LMP::calc_sum_force(
-            &e,
-            static_bvh, dynamic_bvh,
-            statics, dynamics
-        );
+        glm::vec2 f2d =
+            LMP::calc_sum_force(&e, static_bvh, dynamic_bvh, statics, dynamics);
         POOL.get<Dynamics>(e)->force += glm::vec3(f2d.x, 0, f2d.y);
     });
 }
-}//
+} // namespace ai
