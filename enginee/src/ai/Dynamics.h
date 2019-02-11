@@ -1,8 +1,6 @@
-#ifndef DYNAMICS_H
-#define DYNAMICS_H
-
+#pragma once
 struct Dynamics {
-    //TODO: remove redundancies that need to be synced.
+    // TODO: remove redundancies that need to be synced.
     glm::vec3 pos;
     glm::vec3 vel_backhalf;
     glm::vec3 vel;
@@ -11,5 +9,3 @@ struct Dynamics {
     glm::vec3 force;
     float mass;
 };
-
-#endif//DYNAMICS_H

@@ -1,5 +1,6 @@
 #include "CubeMesh.h"
 
+// clang-format off
 const std::vector<Vertex> verts = {
     //top (0 - 3)
     {glm::vec3( 0.5,  0.5,  0.5), glm::vec3(0, 1, 0), glm::vec2(0, 0)},
@@ -57,8 +58,8 @@ const std::vector<GLuint> idxs = {
     20, 22, 23,
     20, 23, 21
 };
+// clang-format on
 
-CubeMesh::CubeMesh(std::vector<Texture>& texs)
-        : Mesh(verts, idxs, texs) {
+CubeMesh::CubeMesh(std::vector<Texture>& texs): Mesh(verts, idxs, texs) {
     _type = Type::CUBE;
 }

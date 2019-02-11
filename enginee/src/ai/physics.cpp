@@ -1,6 +1,6 @@
 #include "physics.h"
-#include "ai.h"
 #include "Pool.h"
+#include "ai.h"
 #include "util/debug.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -73,4 +73,4 @@ void simulate(float dt) {
         }
     });
 }
-}
+} // namespace physics

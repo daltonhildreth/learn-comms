@@ -1,9 +1,7 @@
-#ifndef DIR_LIGHT_H
-#define DIR_LIGHT_H
-
+#pragma once
 #include "Light.h"
 
-class DirLight : public Light {
+class DirLight: public Light {
 public:
     DirLight();
 
@@ -11,8 +9,7 @@ public:
 
     glm::vec3 dir();
     void dir(glm::vec3);
+
 private:
     glm::vec3 _dir;
 };
-
-#endif//DIR_LIGHT_H

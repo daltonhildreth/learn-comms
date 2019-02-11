@@ -1,6 +1,4 @@
-#ifndef COMM_COMP_H
-#define COMM_COMP_H
-
+#pragma once
 #include <glm/vec3.hpp>
 
 struct CommComp {
@@ -20,8 +18,5 @@ struct CommComp {
         c = c_buf;
         v_buf = glm::vec2(0);
     };
-    glm::vec2 right() {
-        return glm::vec2(facing.y, -facing.x);
-    }
+    glm::vec2 right() { return glm::vec2(facing.y, -facing.x); }
 };
-#endif

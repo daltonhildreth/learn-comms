@@ -1,0 +1,6 @@
+[submodule "tools/clang"]
+	path = tools/clang
+	url = git@github.com:fiblit/clang.git
+	ignore = dirty
+	shallow = true
+	update = none

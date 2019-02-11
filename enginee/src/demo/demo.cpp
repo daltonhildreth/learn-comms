@@ -1,27 +1,29 @@
 #include "demo.h"
-#include "model/CubeMesh.h"
-#include "light/PointLight.h"
-#include "light/DirLight.h"
-#include "util/debug.h"
 #include "Pool.h"
+#include "light/DirLight.h"
+#include "light/PointLight.h"
+#include "model/CubeMesh.h"
 #include "render.h"
 #include "util/Seeder.h"
+#include "util/debug.h"
 
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
+#include <array>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <array>
 
 using namespace std;
 
 namespace demo {
 template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
-static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) {return -pos;}
-static glm::vec2 mirror_x_goal(glm::vec2 pos, unsigned) {return glm::vec2(-pos.x, pos.y);}
+static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) { return -pos; }
+static glm::vec2 mirror_x_goal(glm::vec2 pos, unsigned) {
+    return glm::vec2(-pos.x, pos.y);
+}
 static glm::vec2 axial_goal(glm::vec2 pos, unsigned) {
     int axis = sgn<float>(abs(pos.x) - abs(pos.y));
     axis = (axis == 0 ? 1 : axis);
@@ -36,8 +38,8 @@ static auto make_square_shape(float sz) {
 
 static auto make_radial_bots(unsigned num, float radius) {
     return [num, radius](unsigned i) {
-        float radian = static_cast<float>(i)/static_cast<float>(num)
-            * 2.f * glm::pi<float>();
+        float radian = static_cast<float>(i) / static_cast<float>(num) * 2.f
+            * glm::pi<float>();
         return radius * glm::vec2(cos(radian), sin(radian));
     };
 }
@@ -58,7 +60,8 @@ static Regiment center(Regiment r) {
     return r;
 }
 
-template <size_t N> static auto make_regimented_bots(std::array<Regiment, N> regs) {
+template <size_t N>
+static auto make_regimented_bots(std::array<Regiment, N> regs) {
     for (Regiment r : regs) {
         r.facing /= glm::length(r.facing);
     }
@@ -81,12 +84,12 @@ template <size_t N> static auto make_regimented_bots(std::array<Regiment, N> reg
         return x + y + regs[current].head;
     };
 }
-static auto make_intersecting_bots(unsigned n_per, unsigned cols, float dist) {
+static auto make_intersecting_bots(unsigned n_per, unsigned cols, float d) {
     std::array<Regiment, 4> regiments{
-        center({glm::vec2(1, 0), glm::vec2(-dist, 0), glm::vec2(1.f), cols, n_per}),
-        center({glm::vec2(-1, 0), glm::vec2(dist, 0), glm::vec2(1.f), cols, n_per}),
-        center({glm::vec2(0, 1), glm::vec2(0, -dist), glm::vec2(1.f), cols, n_per}),
-        center({glm::vec2(0, -1), glm::vec2(0, dist), glm::vec2(1.f), cols, n_per})
+        center({{1, 0}, {-d, 0}, {1.f, 1.f}, cols, n_per}),
+        center({{-1, 0}, {d, 0}, {1.f, 1.f}, cols, n_per}),
+        center({{0, 1}, {0, -d}, {1.f, 1.f}, cols, n_per}),
+        center({{0, -1}, {0, d}, {1.f, 1.f}, cols, n_per}),
     };
     return make_regimented_bots(regiments);
 }
@@ -96,7 +99,7 @@ static auto make_hole_wall(float gap, float scale) {
         float x = 0;
         float side = ((i % 2) == 0 ? 1.f : -1.f);
         float height = static_cast<float>(i / 2);
-        float y = side * (scale * (height + .5f) + gap/2.f);
+        float y = side * (scale * (height + .5f) + gap / 2.f);
         return glm::vec2(x, y);
     };
 }
@@ -116,7 +119,7 @@ struct Scene {
 static Scene make_scene(unsigned scn) {
     Scene s;
 
-    switch(scn) {
+    switch (scn) {
     case 0: // circle radius 10; 30 agents; 30s
         s.num_robos = 60u;
         s.max_duration = 30.f;
@@ -162,7 +165,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 56u;
         s.max_duration = 40.f;
         s.cam_dist = 1.2f;
-        s.pos_of = make_intersecting_bots(s.num_robos/4, 7, 6.f);
+        s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = axial_goal;
         break;
 
@@ -170,33 +173,33 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 56u;
         s.max_duration = 70.f;
         s.cam_dist = 1.2f;
-        s.pos_of = make_intersecting_bots(s.num_robos/4, 7, 6.f);
+        s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = opposite_goal;
         break;
 
-    case 6: //intersection 14 wide; 112 agents; curbed; 70s
+    case 6: // intersection 14 wide; 112 agents; curbed; 70s
         s.num_robos = 56u;
         s.num_walls = 12u;
         s.wall_scale = 2.0f;
         s.max_duration = 40.f;
         s.cam_dist = 1.2f;
-        s.pos_of = make_intersecting_bots(s.num_robos/4, 7, 6.f);
+        s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = axial_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
         s.wall_pos_of = [](unsigned i) {
             switch (i) {
-            case 0:  return glm::vec2(-3.f, -3.f); // wall 1
+            case 0: return glm::vec2(-3.f, -3.f); // wall 1
             case 10: return glm::vec2(-4.f, -4.f);
             case 11: return glm::vec2(-6.f, -5.f);
-            case 1:  return glm::vec2(-3.f,  3.f); // wall 2
-            case 8:  return glm::vec2(-4.f,  4.f);
-            case 9:  return glm::vec2(-6.f,  5.f);
-            case 2:  return glm::vec2( 3.f, -3.f); // wall 3
-            case 5:  return glm::vec2( 4.f, -4.f);
-            case 6:  return glm::vec2( 6.f, -5.f);
-            case 3:  return glm::vec2( 3.f,  3.f); // wall 4
-            case 4:  return glm::vec2( 4.f,  4.f);
-            case 7:  return glm::vec2( 6.f,  5.f);
+            case 1: return glm::vec2(-3.f, 3.f); // wall 2
+            case 8: return glm::vec2(-4.f, 4.f);
+            case 9: return glm::vec2(-6.f, 5.f);
+            case 2: return glm::vec2(3.f, -3.f); // wall 3
+            case 5: return glm::vec2(4.f, -4.f);
+            case 6: return glm::vec2(6.f, -5.f);
+            case 3: return glm::vec2(3.f, 3.f); // wall 4
+            case 4: return glm::vec2(4.f, 4.f);
+            case 7: return glm::vec2(6.f, 5.f);
             default: assert(false);
             }
             exit(1);
@@ -209,7 +212,7 @@ static Scene make_scene(unsigned scn) {
         s.wall_scale = 2.0f;
         s.max_duration = 70.f;
         s.pos_of = [](unsigned i) {
-            return (i==0 ? glm::vec2(-3.f, 0) : glm::vec2(3.f, 0));
+            return (i == 0 ? glm::vec2(-3.f, 0) : glm::vec2(3.f, 0));
         };
         s.goal_of = mirror_x_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
@@ -222,8 +225,8 @@ static Scene make_scene(unsigned scn) {
         s.wall_scale = 2.0f;
         s.max_duration = 30.f;
         std::array<Regiment, 2> r{
-            center({glm::vec2(1, 0), glm::vec2(-3, 0), glm::vec2(1.f, 1.f), 2, 2}),
-            center({glm::vec2(-1, 0), glm::vec2(3, 0), glm::vec2(1.f, 1.f), 2, 2})
+            center({{1, 0}, {-3, 0}, {1.f, 1.f}, 2, 2}),
+            center({{-1, 0}, {3, 0}, {1.f, 1.f}, 2, 2}),
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
@@ -238,8 +241,8 @@ static Scene make_scene(unsigned scn) {
         s.wall_scale = 2.0f;
         s.max_duration = 90.f;
         std::array<Regiment, 2> r{
-            center({glm::vec2(1, 0), glm::vec2(-3, 0), glm::vec2(1.f, 1.f), 5, 20}),
-            center({glm::vec2(-1, 0), glm::vec2(3, 0), glm::vec2(1.f, 1.f), 5, 20})
+            center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 20}),
+            center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 20}),
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
@@ -254,8 +257,8 @@ static Scene make_scene(unsigned scn) {
         s.wall_scale = 2.0f;
         s.max_duration = 60.f;
         std::array<Regiment, 2> r{
-            center({glm::vec2(1, 0), glm::vec2(-3, 0), glm::vec2(1.f, 1.f), 5, 5}),
-            center({glm::vec2(-1, 0), glm::vec2(3, 0), glm::vec2(1.f, 1.f), 5, 35})
+            center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 5}),
+            center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 35}),
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
@@ -266,50 +269,50 @@ static Scene make_scene(unsigned scn) {
 
     case 11: // escaping room
         assert(false);
-//        s.num_robos = 40u;
-//        s.num_walls = 120u;
-//        s.wall_scale = 2.0f;
-//        s.max_duration = ;
-//        s.pos_of = ;
-//        s.goal_of = ;
-//        s.wall_shape_of = ;
-//        s.wall_pos_of = ;
+        //        s.num_robos = 40u;
+        //        s.num_walls = 120u;
+        //        s.wall_scale = 2.0f;
+        //        s.max_duration = ;
+        //        s.pos_of = ;
+        //        s.goal_of = ;
+        //        s.wall_shape_of = ;
+        //        s.wall_pos_of = ;
         break;
 
     case 12: // crowd
         assert(false);
- //       s.num_robos = 100u;
- //       s.num_walls = 0u;
- //       s.wall_scale = 0.0f;
- //       s.max_duration = ;
- //       s.pos_of = ;
- //       s.goal_of = ;
- //       s.wall_shape_of = ;
- //       s.wall_pos_of = ;
+        //       s.num_robos = 100u;
+        //       s.num_walls = 0u;
+        //       s.wall_scale = 0.0f;
+        //       s.max_duration = ;
+        //       s.pos_of = ;
+        //       s.goal_of = ;
+        //       s.wall_shape_of = ;
+        //       s.wall_pos_of = ;
         break;
 
     case 13: // two tight formations of 20 going down a hall
         assert(false);
-//        s.num_robos = 40u;
-//        s.num_walls = 30u;
-//        s.wall_scale = 2.0f;
-//        s.max_duration = ;
-//        s.pos_of = ;
-//        s.goal_of = ;
-//        s.wall_shape_of = ;
-//        s.wall_pos_of = ;
+        //        s.num_robos = 40u;
+        //        s.num_walls = 30u;
+        //        s.wall_scale = 2.0f;
+        //        s.max_duration = ;
+        //        s.pos_of = ;
+        //        s.goal_of = ;
+        //        s.wall_shape_of = ;
+        //        s.wall_pos_of = ;
         break;
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
         s.max_duration = 30.f;
         s.pos_of = [](unsigned i) {
-            return (i==0 ? glm::vec2(-5.f, .1f) : glm::vec2(3.f, 0));
+            return (i == 0 ? glm::vec2(-5.f, .1f) : glm::vec2(3.f, 0));
         };
         s.goal_of = mirror_x_goal;
         break;
 
-    case 15:  // staggered 1 on 2
+    case 15: // staggered 1 on 2
         s.num_robos = 3u;
         s.max_duration = 40.f;
         s.pos_of = [](unsigned i) {
@@ -344,8 +347,8 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 4u;
         s.max_duration = 45.f;
         std::array<Regiment, 2> r{
-            center({glm::vec2(1, 0), glm::vec2(-5, .1f), glm::vec2(1.f), 2, 2}),
-            center({glm::vec2(-1, 0), glm::vec2(3, 0), glm::vec2(1.f), 2, 2})
+            center({{1, 0}, {-5, .1f}, {1.f, 1.f}, 2, 2}),
+            center({{-1, 0}, {3, 0}, {1.f, 1.f}, 2, 2}),
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
@@ -358,13 +361,13 @@ static Scene make_scene(unsigned scn) {
 Scene scn;
 
 static void create_floor(Entity& e, vector<Texture> texs) {
-    #ifdef NO_RENDER
+#ifdef NO_RENDER
     UNUSED(texs);
-    #endif
+#endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
-    #endif
+#endif
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(50.f);
     scale[1][1] = 1.f;
@@ -373,19 +376,19 @@ static void create_floor(Entity& e, vector<Texture> texs) {
     t.set_pos(glm::vec3(0, -1, 0));
 
     POOL.attach<Transform>(e, tid);
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
-    #endif
+#endif
 }
 
 static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
-    #ifdef NO_RENDER
+#ifdef NO_RENDER
     UNUSED(texs);
-    #endif
+#endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
-    #endif
+#endif
     uint16_t bvid = POOL.create<BoundVolume*>(scn.wall_shape_of(pos, 0));
 
     Seeder s;
@@ -400,26 +403,26 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
 
     POOL.attach<Transform>(e, tid);
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
-    #endif
+#endif
     POOL.attach<BoundVolume*>(e, bvid);
 }
 
 static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
-    #ifdef NO_RENDER
+#ifdef NO_RENDER
     UNUSED(texs);
-    #endif
+#endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
-    #endif
+#endif
     uint16_t did = POOL.create<Dynamics>(Dynamics());
     uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, .3f, .3f));
     uint16_t aid = POOL.create<Agent>(Agent());
-    #ifndef NO_COMM
+#ifndef NO_COMM
     uint16_t cid = POOL.create<CommComp>(CommComp());
-    #endif
+#endif
 
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(.3f);
@@ -438,46 +441,47 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     a.final_goal = scn.goal_of(pos, 0);
     a.start = pos;
 
-    #ifndef NO_COMM
+#ifndef NO_COMM
     auto& c = *POOL.get<CommComp>(cid);
     c.c = glm::vec2(0);
     c.c_buf = glm::vec2(0);
     c.v_buf = glm::vec2(0);
     c.facing = a.final_goal - a.start;
-    #endif
+#endif
 
     POOL.attach<Transform>(e, tid);
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     POOL.attach<Mesh>(e, mid);
-    #endif
+#endif
     POOL.attach<Dynamics>(e, did);
     POOL.attach<BoundVolume*>(e, bvid);
     POOL.attach<Agent>(e, aid);
-    #ifndef NO_COMM
+#ifndef NO_COMM
     POOL.attach<CommComp>(e, cid);
-    #endif
+#endif
 }
-
 
 void init(unsigned scn_i) {
     string pwd(PROJECT_SRC_DIR);
 
     scn = make_scene(scn_i);
 
-    //so, normally I'd only want one mesh shared amongst many entities, but the
-    //renderer does a for_<Mesh> so I can't do that.
-    vector<Texture> robo_tex = {
-    };
+    // so, normally I'd only want one mesh shared amongst many entities, but the
+    // renderer does a for_<Mesh> so I can't do that.
+    vector<Texture> robo_tex = {};
     vector<Texture> floor_tex = {
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
         {render::create_tex(pwd + "/res/stone.jpg"), Texmap::diffuse}
-    #endif
+#endif
     };
     vector<Texture> wall_tex = {
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
         {render::create_tex(pwd + "/res/container2.png"), Texmap::diffuse},
-        {render::create_tex(pwd + "/res/container2_specular.png"), Texmap::specular}
-    #endif
+        {
+            render::create_tex(pwd + "/res/container2_specular.png"),
+            Texmap::specular,
+        }
+#endif
     };
 
     Entity& floors = POOL.spawn_entity();
@@ -487,12 +491,12 @@ void init(unsigned scn_i) {
         create_robo(POOL.spawn_entity(), robo_tex, scn.pos_of(i));
     }
 
-    #pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wtype-limits"
     for (unsigned i = 0; i < scn.num_walls; ++i) {
         create_wall(POOL.spawn_entity(), wall_tex, scn.wall_pos_of(i));
     }
 
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     {
         render::dir_lights.push_back(make_unique<DirLight>());
         render::dir_lights.back()->dir(glm::vec3(0, -1, 0));
@@ -501,7 +505,6 @@ void init(unsigned scn_i) {
         render::dir_lights.back()->specular(glm::vec3(.1f));
     }
 
-
     Seeder s;
     typedef uniform_real_distribution<float> UFD;
     UFD y_dist(3, 10);
@@ -509,18 +512,20 @@ void init(unsigned scn_i) {
     UFD map(-25.f, 25.f);
     for (unsigned i = 0; i < 8; ++i) {
         render::point_lights.push_back(make_unique<PointLight>());
-        render::point_lights.back()->pos(glm::vec3(
-            map(s.gen()), y_dist(s.gen()), map(s.gen())));
+        render::point_lights.back()->pos(
+            glm::vec3(map(s.gen()), y_dist(s.gen()), map(s.gen()))
+        );
         render::point_lights.back()->att_to_dist(1000);
         render::point_lights.back()->ambient(glm::vec3(0.f));
-        render::point_lights.back()->diffuse(glm::vec3(.5f)
-             + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen())));
+        render::point_lights.back()->diffuse(
+            glm::vec3(.5f)
+            + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen()))
+        );
         render::point_lights.back()->specular(glm::vec3(.2f));
     }
 
-
     render::cam_dist = scn.cam_dist;
-    #endif
+#endif
 }
 
 float run_avg_time = 0;
@@ -532,7 +537,8 @@ static void update_runs(float time) {
     float ftotal = static_cast<float>(++total_num_done);
     run_avg_time += (time - run_avg_time) / ftotal;
     run_sum_times_sq += time * time;
-    run_std_time = sqrt(run_sum_times_sq * ftotal - run_avg_time * run_avg_time) / ftotal;
+    run_std_time =
+        sqrt(run_sum_times_sq * ftotal - run_avg_time * run_avg_time) / ftotal;
 }
 
 bool run(double dt, double time, unsigned frame_count) {
@@ -554,13 +560,13 @@ bool run(double dt, double time, unsigned frame_count) {
         last_s = time;
     }
     for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
-         update_runs(fake_time);
+        update_runs(fake_time);
     }
     if (fake_time > scn.max_duration) {
-        POOL.for_<Agent>([&](Agent& ai, Entity&){
+        POOL.for_<Agent>([&](Agent& ai, Entity&) {
             if (!ai.done()) {
-                float finish_time = 2*glm::length(ai.final_goal - ai.start)
-                    + fake_time;
+                float finish_time =
+                    2 * glm::length(ai.final_goal - ai.start) + fake_time;
                 update_runs(finish_time);
             }
         });
@@ -568,4 +574,4 @@ bool run(double dt, double time, unsigned frame_count) {
     }
     return all_done;
 }
-}
+} // namespace demo

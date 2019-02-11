@@ -1,23 +1,23 @@
 #include "render.h"
 #include "Camera.h"
-#include "light/Shader.h"
-#include "light/PointLight.h"
-#include "light/DirLight.h"
-#include "light/SpotLight.h"
-#include "model/LineMesh.h"
-#include "model/CubeMesh.h"
-#include "util/debug.h"
-#include "io.h"
-#include "ui.h"
 #include "Pool.h"
+#include "io.h"
+#include "light/DirLight.h"
+#include "light/PointLight.h"
+#include "light/Shader.h"
+#include "light/SpotLight.h"
+#include "model/CubeMesh.h"
+#include "model/LineMesh.h"
+#include "ui.h"
+#include "util/debug.h"
 #include <glad.h>
-#include <stb_image.h>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <memory>
-#include <vector>
-#include <string>
 #include <iostream>
+#include <memory>
+#include <stb_image.h>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -51,31 +51,42 @@ GLuint create_tex(std::string path) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format),
-        img->width, img->height, 0,
-        format, GL_UNSIGNED_BYTE, img->bytes);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        static_cast<GLint>(format),
+        img->width,
+        img->height,
+        0,
+        format,
+        GL_UNSIGNED_BYTE,
+        img->bytes
+    );
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR
+    );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    stbi_image_free(img->bytes);//would prefer if this was solved by RAII
+    stbi_image_free(img->bytes); // would prefer if this was solved by RAII
     return tex;
 }
 
 #ifndef NO_RENDER
 static glm::vec3 uv2rgb(glm::vec3 Luv) {
     glm::vec3 rgb = {
-    //Here the 0.5 in each equation is just the desired luminance Y, you can play with it
+        // Here the 0.5 in each equation is just the desired
+        // luminance Y, you can play with it
         +0.000 * Luv[0] + 1.140 * Luv[1],
         -0.395 * Luv[0] - 0.581 * Luv[1],
-        +2.032 * Luv[0] + 0.000 * Luv[1]
+        +2.032 * Luv[0] + 0.000 * Luv[1],
     };
     rgb += Luv[0];
 
-    //Clamp the results to 0 to 1
+    // Clamp the results to 0 to 1
     return glm::max(glm::vec3(0.f), glm::min(glm::vec3(1.f), rgb));
 }
 #endif
@@ -95,7 +106,7 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         if (cube > 0.008856) {
             return cube;
         }
-        return (a - 16./116.) / 7.787;
+        return (a - 16. / 116.) / 7.787;
     };
     // D65 , 2 degree standard illuminant (Daylight, sRGB, Adobe-RGB)
     XYZ[0] = 0.95047 * maybe_cube(XYZ[0]);
@@ -111,7 +122,7 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
 
     auto finish_rgb = [](double a) -> double {
         if (a > 0.0031308) {
-            a = 1.055 * pow(a, 1./2.4) - 0.055;
+            a = 1.055 * pow(a, 1. / 2.4) - 0.055;
         } else {
             a *= 12.92;
         }
@@ -141,31 +152,32 @@ void init(glm::vec<2, int> dims) {
     ui::add_handler(input_scroll);
     comm_vis = Lab2rgb;
 
-    //build material
+    // build material
     mtl = unique_ptr<Shader>(new Shader());
     std::string pwd(PROJECT_SRC_DIR);
     mtl->add(GL_VERTEX_SHADER, pwd + "/res/glsl/tex.vert");
     mtl->add(GL_FRAGMENT_SHADER, pwd + "/res/glsl/lit_mtl.frag");
     mtl->build();
 
-    POOL.for_<Mesh>([&](Mesh& m, Entity&){
-        //TODO: material as component so entities can set their albedo & shaders
+    POOL.for_<Mesh>([&](Mesh& m, Entity&) {
+        // TODO: material as component so entities can set their albedo &
+        // shaders
         if (m._type == Mesh::Type::LINE) {
-            //LineMesh& l = m;
+            // LineMesh& l = m;
             m.set_material(mtl.get(), 0, glm::vec3(0, 100, 0));
         } else {
             m.set_material(mtl.get(), 32);
         }
-        //TODO:
+        // TODO:
         //.material(Material(
         //  shader,
         //  {textures},
         //  albedo reflections,
         //  shininess,
         //  other lit properties like metallicity and transparency.)
-     });
+    });
 
-    //send (static) lights to shader(s)
+    // send (static) lights to shader(s)
     mtl->use();
     mtl->set("n_dir_lights", static_cast<GLint>(dir_lights.size()));
     for (size_t i = 0; i < dir_lights.size(); ++i) {
@@ -180,36 +192,37 @@ void init(glm::vec<2, int> dims) {
         spot_lights[i]->pass_to(*mtl, "spot_lights[" + to_string(i) + "].");
     }
 
-    //set up camera
+    // set up camera
     cam = make_unique<Camera>();
     cam->aspect(static_cast<float>(dims.x) / static_cast<float>(dims.y));
     cam->set_pos(glm::vec3(0, 25.f * cam_dist, 0.f * cam_dist));
     cam->set_rot(glm::vec3(0, -1, 0), glm::vec3(0, 0, -1));
 
-    //TODO: Uniform buffer object; see below
+    // TODO: Uniform buffer object; see below
     cam->apply_proj(*mtl);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }
 
-
 void draw() {
     glClearColor(.2f, .2f, .2f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     cam->apply_proj(*mtl);
-    //TODO:
-    //update camera view: note to self, the most efficient way to do this across
+    // TODO:
+    // update camera view: note to self, the most efficient way to do this
+    // across
     // many shaders (i.e. materials) is to use Uniform Buffer Objects:
-    //www.geeks3d.com/20140704/gpu-buffers-introduction-to-opengl-3-1-unfiorm-buffer-objects
-    //is a good tutorial for them. Also, the Khronos standard seems pretty good.
+    // www.geeks3d.com/20140704/gpu-buffers-introduction-to-opengl-3-1-unfiorm-buffer-objects
+    // is a good tutorial for them. Also, the Khronos standard seems pretty
+    // good.
     cam->apply_view(*mtl);
 
-    //TODO: (pre?)rendering by scene graph?
-    //TODO: dynamic lighting
+    // TODO: (pre?)rendering by scene graph?
+    // TODO: dynamic lighting
 
-    POOL.for_<Mesh>([&](Mesh& m, Entity& e){
+    POOL.for_<Mesh>([&](Mesh& m, Entity& e) {
         auto t = POOL.get<Transform>(e);
         if (t) {
             mtl->set("model", t->global_mat());
@@ -222,7 +235,8 @@ void draw() {
             glm::vec2 ab = c->c;
             m._diffuse = comm_vis(glm::vec3(0.5, ab));
         }
-        //update models _and_ do glDraw; this combination seems to cause issues.
+        // update models _and_ do glDraw; this combination seems to cause
+        // issues.
         if (m._type == Mesh::Type::LINE) {
             LineMesh l = m;
             l.draw();
@@ -232,7 +246,7 @@ void draw() {
     });
 }
 
-//custom handler for input
+// custom handler for input
 void input_key(GLFWwindow* w, double ddt) {
     float dt = static_cast<float>(ddt);
     glm::vec3 motion(0, 0, 0);
@@ -254,7 +268,7 @@ void input_key(GLFWwindow* w, double ddt) {
     if (ui::key_map[GLFW_KEY_F]) {
         motion += glm::vec3(0, -1, 0);
     }
-    cam->move(5.f*motion * dt);
+    cam->move(5.f * motion * dt);
 
     float roll = 0;
     if (ui::key_map[GLFW_KEY_Q]) {
@@ -267,7 +281,7 @@ void input_key(GLFWwindow* w, double ddt) {
     glm::vec3 up_new = cam->up() + roll * cam->right();
     cam->set_rot(cam->look_dir(), up_new);
 
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     if (ui::edge_up(GLFW_KEY_X)) {
         if (glfwGetInputMode(w, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
             glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -284,33 +298,33 @@ void input_key(GLFWwindow* w, double ddt) {
     } else if (ui::edge_up(GLFW_KEY_3)) {
         comm_vis = L_y2_gb;
     }
-    #else
+#else
     UNUSED(w);
-    #endif
-
+#endif
 }
 
-void input_cursor(GLFWwindow*, double) {//ddt) {
-    //float dt = static_cast<float>(ddt);
-    //glm::vec2 offset = ui::d_cursor_pos * 0.001f;
-    //glm::vec3 look_new = cam->look_dir() +
+void input_cursor(GLFWwindow*, double) { // ddt) {
+    // float dt = static_cast<float>(ddt);
+    // glm::vec2 offset = ui::d_cursor_pos * 0.001f;
+    // glm::vec3 look_new = cam->look_dir() +
     //    + offset.x * cam->right() - offset.y * cam->up();
-    //cam->set_rot(look_new, cam->up());
+    // cam->set_rot(look_new, cam->up());
 }
 
 void input_scroll(GLFWwindow*, double ddt) {
     float dt = static_cast<float>(ddt);
-    cam->zoom(cam->zoom()*(1+ui::d_scroll * dt));
+    cam->zoom(cam->zoom() * (1 + ui::d_scroll * dt));
 }
 
 void framebuffer_resize(GLFWwindow* w, int width, int height) {
     int old_width;
     int old_height;
     glfwGetWindowSize(w, &old_width, &old_height);
-    clog << "gg. Window resize (" << old_width << "," << old_height << ") -> "
-         << "(" << width << "," << height << ")\n";
+    clog //
+        << "gg. Window resize (" << old_width << "," << old_height << ")"
+        << " -> (" << width << "," << height << ")\n";
     glViewport(0, 0, width, height);
 
-    cam->aspect(static_cast<float>(width)/static_cast<float>(height));
+    cam->aspect(static_cast<float>(width) / static_cast<float>(height));
 }
-}//render::
+} // namespace render

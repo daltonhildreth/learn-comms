@@ -16,26 +16,22 @@ int key_map[512] = {0};
 int prior_key_map[512] = {0};
 std::vector<std::function<void(GLFWwindow*, double)>> handlers;
 
-bool edge_up(int key) {
-    return key_map[key] && !prior_key_map[key];
-}
-bool edge_down(int key) {
-    return !key_map[key] && prior_key_map[key];
-}
+bool edge_up(int key) { return key_map[key] && !prior_key_map[key]; }
+bool edge_down(int key) { return !key_map[key] && prior_key_map[key]; }
 
 void init_callbacks(GLFWwindow* w) {
     glfwSetKeyCallback(w, key_callback);
-    #ifndef NO_RENDER
+#ifndef NO_RENDER
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    #endif
+#endif
     glfwSetInputMode(w, GLFW_STICKY_KEYS, 1);
     glfwSetCursorPosCallback(w, mouse_callback);
     glfwSetScrollCallback(w, scroll_callback);
 }
 
 void handle_input(GLFWwindow* w, double delta_s) {
-    //global handlers
-    //esc -> close application
+    // global handlers
+    // esc -> close application
     if (key_map[GLFW_KEY_ESCAPE]) {
         glfwSetWindowShouldClose(w, true);
         return;
@@ -64,8 +60,8 @@ void key_callback(GLFWwindow*, int key, int, int action, int) {
 void center_mouse(GLFWwindow* w) {
     int height, width;
     glfwGetWindowSize(w, &width, &height);
-    glfwSetCursorPos(w, width/2, height/2);
-    cursor_pos = glm::vec2(width, height)/2.f;
+    glfwSetCursorPos(w, width / 2, height / 2);
+    cursor_pos = glm::vec2(width, height) / 2.f;
 }
 
 void mouse_callback(GLFWwindow* w, double xpos, double ypos) {
@@ -83,4 +79,4 @@ void mouse_callback(GLFWwindow* w, double xpos, double ypos) {
 void scroll_callback(GLFWwindow*, double, double yoffset) {
     d_scroll = static_cast<float>(yoffset);
 }
-}//UI::
+} // namespace ui

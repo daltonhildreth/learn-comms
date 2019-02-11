@@ -1,13 +1,13 @@
 #include "comm.h"
-#include "io.h"
 #include "Pool.h"
-#include "demo/demo.h"
 #include "ai/physics.h"
-#include <sstream>
+#include "demo/demo.h"
+#include "io.h"
 #include <fstream>
+#include <sstream>
 
 namespace comm {
-//one 4x7 matrix I split into four for easy multiplication later
+// one 4x7 matrix I split into four for easy multiplication later
 glm::mat2x4 M_c; // c input/output
 glm::mat2x4 M_relv; // relative velocity input
 glm::mat2x4 M_relp; // relative position input
@@ -78,12 +78,11 @@ void run() {
         glm::vec2 diff_p = closest_d->pos - d.pos;
         glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_forward, diff_p));
 
-
         Agent& a = *POOL.get<Agent>(e_c);
         c.buf_in(
-            M_c * closest_c->c
-            + M_relv * rel_v
-            + M_relp * rel_p
+            M_c * closest_c->c //
+            + M_relv * rel_v //
+            + M_relp * rel_p //
             + M_dist * a.goal_dist
         );
     });
@@ -96,11 +95,14 @@ void run() {
         if (a && !a->done())
             d.force += glm::vec3(diff.x, 0.f, diff.y);
 
-        if (glm::length(d.vel) > 0 && glm::length(a->local_goal - a->start) > 0) {
+        if ( //
+            glm::length(d.vel) > 0 //
+            && glm::length(a->local_goal - a->start) > 0
+        ) {
             c.facing = glm::normalize(a->local_goal - a->start);
         }
         c.swap();
     });
 }
 
-}
+} // namespace comm

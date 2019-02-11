@@ -1,20 +1,13 @@
 #include "io.h"
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <stb_image.h>
-#ifdef WIN32
-    #include <optional>
-#else
-    #include <experimental/optional>
-#endif
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 #undef GLM_ENABLE_EXPERIMENTAL
 
 using namespace std;
-#ifndef WIN32
-using namespace std::experimental;
-#endif
 
 optional<const string> read_file(const string& path) {
     ifstream file(path, ios::in | ios::binary);

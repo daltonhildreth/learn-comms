@@ -1,13 +1,11 @@
-#ifndef SEEDER_H
-#define SEEDER_H
-
-#include <random>
+#pragma once
 #include <chrono>
 #include <cstdint>
+#include <random>
 
 typedef std::chrono::high_resolution_clock HRClock;
 
-//singleton seed generator
+// singleton seed generator
 class Seeder {
 public:
     Seeder();
@@ -16,9 +14,9 @@ public:
     uint64_t seed();
     void seed(uint64_t s);
     std::default_random_engine& gen();
+
 private:
     static uint64_t _seed;
     static HRClock::time_point _first;
     static std::default_random_engine _gen;
 };
-#endif//SEEDER_H
