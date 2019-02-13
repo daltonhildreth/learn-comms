@@ -1,5 +1,11 @@
 {
     "C_Cpp.clang_format_path": "${workspaceFolder}/tools/build/bin/clang-format",
     "C_Cpp.clang_format_style": "file",
-    "C_Cpp.clang_format_fallbackStyle": "none"
+    "C_Cpp.clang_format_fallbackStyle": "none",
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+      "--line-length",
+      "80",
+      "--py36",
+    ],
   }

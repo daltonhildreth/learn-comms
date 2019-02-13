@@ -11,14 +11,15 @@ import asyncio
 M_SHAPE = (4, 7)
 N_COMM = 2
 
+
 def write_config(file, config):
     file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
     for i in range(0, M_SHAPE[0]):
         for j in range(0, M_SHAPE[1]):
             file.write(str(config[i][j]))
-            if (j != M_SHAPE[1] - 1):
-                file.write(' ')
-        file.write('\n')
+            if j != M_SHAPE[1] - 1:
+                file.write(" ")
+        file.write("\n")
 
 
 def read_result(file):
@@ -39,8 +40,9 @@ def pretty_mat(np_m):
     for r in np_m:
         for c in r:
             s += " %+.5f" % c
-        s +="\n"
+        s += "\n"
     return s
+
 
 class Particle:
     def __init__(self, id_, min_config, max_config, scene, data_dir):
@@ -58,7 +60,9 @@ class Particle:
                 # Don't fill in values that are redundant to TTC
                 if r > N_COMM - 1 and c > N_COMM - 1:
                     continue
-                self.pos.config[r][c] = uniform(min_config[r][c], max_config[r][c])
+                self.pos.config[r][c] = uniform(
+                    min_config[r][c], max_config[r][c]
+                )
 
         self.vel = np.zeros(shape=M_SHAPE)
         for r in range(len(self.vel)):
@@ -111,8 +115,10 @@ class Particle:
 
     async def attempt_move(self):
         self.pos = await simulate(
-            self.scene, self.vel + self.pos.config, self.data_dir,
-            "%d_p%d" % (self.iters, self.id)
+            self.scene,
+            self.vel + self.pos.config,
+            self.data_dir,
+            "%d_p%d" % (self.iters, self.id),
         )
         self.iters += 1
 
@@ -123,20 +129,28 @@ class Particle:
                 global_min = self.local_min
         return global_min
 
+
 class Point:
-    def __init__(self, x=None, y=float('inf')):
+    def __init__(self, x=None, y=float("inf")):
         self.config = x
         self.score = y
+
 
 class Scene:
     def __init__(self, id_, seed):
         self.id = id_
         self.seed = seed
 
+
 class HyperParameters:
     def __init__(
-        self, n_particles, w_inertia, w_local, w_global, max_iters,
-        max_convergence
+        self,
+        n_particles,
+        w_inertia,
+        w_local,
+        w_global,
+        max_iters,
+        max_convergence,
     ):
         self.n_particles = n_particles
         self.w_inertia = w_inertia
@@ -144,6 +158,7 @@ class HyperParameters:
         self.w_global = w_global
         self.max_iters = max_iters
         self.max_convergence = max_convergence
+
 
 async def simulate(scene, config, data_dir, save_name):
     prog = "build/bin/comm_norender"
@@ -155,7 +170,7 @@ async def simulate(scene, config, data_dir, save_name):
 
     makedirs("%s/%s/" % (data_dir, save_name))
     sim_config = "%s/comms.config" % data_dir
-    with open(sim_config, 'w') as config_file:
+    with open(sim_config, "w") as config_file:
         write_config(config_file, config)
     copyfile(sim_config, "%s/%s/%s.config" % save)
 
@@ -163,15 +178,13 @@ async def simulate(scene, config, data_dir, save_name):
     with open("%s/%s/%s.log" % save, "w") as logout_file:
         with open("%s/%s/%s.err" % save, "w") as logerr_file:
             sim = await asyncio.create_subprocess_exec(
-                *([prog] + args),
-                stdout=logout_file,
-                stderr=logerr_file
+                *([prog] + args), stdout=logout_file, stderr=logerr_file
             )
             await sim.wait()
 
     sim_result = "%s/comms.result" % data_dir
     copyfile(sim_result, "%s/%s/%s.result" % save)
-    with open(sim_result, 'r') as result_clone:
+    with open(sim_result, "r") as result_clone:
         return Point(config, read_result(result_clone))
 
 
@@ -191,14 +204,14 @@ async def PSO(data_dir, scene, hypers):
         p = Particle(p, min_config, max_config, scene, data_dir)
         await p.kickstart()
         global_min = p.minimize(global_min)
-        with open("data/%s/opt.log" % data_dir, 'a') as trace:
+        with open("data/%s/opt.log" % data_dir, "a") as trace:
             p.debug(trace, baseline, global_min)
         particles += [p]
 
     conv_path = data_dir + "/convergence.log"
-    with open("data/" + conv_path, 'w') as f_conv:
+    with open("data/" + conv_path, "w") as f_conv:
         f_conv.write("convergence value per full iteration of all particles\n")
- 
+
     for i in range(hypers.max_iters):
         for p in particles:
             # integrate particle swarm dynamics
@@ -207,23 +220,25 @@ async def PSO(data_dir, scene, hypers):
 
             # update known minima
             global_min = p.minimize(global_min)
-            with open("data/%s/opt.log" % data_dir, 'a') as trace:
+            with open("data/%s/opt.log" % data_dir, "a") as trace:
                 p.debug(trace, baseline, global_min)
 
         # the potential variation of the fastest particle
         convergence = abs(max([np.linalg.norm(p.vel) for p in particles]))
-        with open("data/" + conv_path, 'a') as f_conv:
-            f_conv.write("i: " + str(i) + ",  c: " + str(convergence)+"\n")
+        with open("data/" + conv_path, "a") as f_conv:
+            f_conv.write("i: " + str(i) + ",  c: " + str(convergence) + "\n")
         if convergence < hypers.max_convergence:
             return "converged"
     return "iterated"
+
 
 async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
     return await PSO(data_dir, scene, meta_args)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Globally optimize via Particle-Swarms the communication"
         "model for the Talking Hive project."
@@ -252,8 +267,8 @@ if __name__ == '__main__':
                     args.w_local,
                     args.w_global,
                     args.iters,
-                    args.convergence
-                )
+                    args.convergence,
+                ),
             )
             for scene in scenes
         )
