@@ -1,7 +1,8 @@
 from random import uniform, random
 from shutil import copyfile
 from copy import copy
-from os import mkdir, makedirs, getpid
+from os import listdir, path, mkdir, makedirs, getpid
+from os.path import isdir
 from subprocess import Popen, PIPE
 from itertools import chain
 import argparse
@@ -22,17 +23,20 @@ def write_config(file, config):
         file.write("\n")
 
 
-def read_result(file):
-    # will get results to influence nn choice from M
-    avg_vel = float(file.readline().strip())
-    confident_time = float(file.readline().strip())
-    return result_metric((avg_vel, confident_time))
+def read_result(result_file):
+    def read_float(file):
+        return float(file.readline().strip())
 
+    def aggregate(result):
+        # this limits the results to just Julio's time confidence metric
+        _, confident_time = result
+        return confident_time
 
-def result_metric(result):
-    # this limits the results to just Julio's time confidence metric
-    _, confident_time = result
-    return confident_time
+    with open(result_file, "r") as f:
+        # will get results to influence nn choice from M
+        avg_vel = read_float(f)
+        confident_time = read_float(f)
+        return aggregate((avg_vel, confident_time))
 
 
 def pretty_mat(np_m):
@@ -131,9 +135,10 @@ class Particle:
 
 
 class Point:
-    def __init__(self, x=None, y=float("inf")):
+    def __init__(self, x=None, y=float("inf"), file=None):
         self.config = x
         self.score = y
+        self.file = file
 
 
 class Scene:
@@ -184,8 +189,7 @@ async def simulate(scene, config, data_dir, save_name):
 
     sim_result = "%s/comms.result" % data_dir
     copyfile(sim_result, "%s/%s/%s.result" % save)
-    with open(sim_result, "r") as result_clone:
-        return Point(config, read_result(result_clone))
+    return Point(config, read_result(sim_result), save_name)
 
 
 async def PSO(data_dir, scene, hypers):
@@ -228,14 +232,39 @@ async def PSO(data_dir, scene, hypers):
         with open("data/" + conv_path, "a") as f_conv:
             f_conv.write("i: " + str(i) + ",  c: " + str(convergence) + "\n")
         if convergence < hypers.max_convergence:
-            return "converged"
-    return "iterated"
+            return "conv", baseline.score, global_min.score, global_min.file
+    return "iter", baseline.score, global_min.score, global_min.file
+
+
+def gen_result(run, scene, minimum):
+    how, base_val, min_val, min_file = minimum
+    src = "data/%s/%d_train/iters" % (run, scene.id)
+    dst = "data/%s/results/%d_min" % (run, scene.id)
+    makedirs(dst)
+    src = (src, min_file, min_file)
+    copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
+    copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
+    return (
+        str(scene.id)
+        + ("\tbest at config: " + min_file)
+        + ("\tw/ conf_time: " + str(min_val))
+        + ("\tvs base_conf_time: " + str(base_val))
+        + ("\tby " + how)
+        + "\n"
+    )
+
+
+def agg_result(run, per_result_texts):
+    with open("data/%s/results/best.txt" % run, "w") as best:
+        for text in per_result_texts:
+            best.write(text)
 
 
 async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
-    return await PSO(data_dir, scene, meta_args)
+    minimum = await PSO(data_dir, scene, meta_args)
+    return gen_result(run_name, scene, minimum)
 
 
 if __name__ == "__main__":
@@ -273,7 +302,8 @@ if __name__ == "__main__":
             for scene in scenes
         )
         optimize = asyncio.gather(*tasks, return_exceptions=True)
-        event_loop.run_until_complete(optimize)
+        results = event_loop.run_until_complete(optimize)
+        agg_result(args.name, results)
         for i, outcome in enumerate(optimize.result()):
             if isinstance(outcome, Exception):
                 print("ERROR", i, scenes[i], outcome)
