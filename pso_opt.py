@@ -84,7 +84,7 @@ class Particle:
         self.vel = vel
 
     def debug(self, trace, base, global_min):
-        trace.write("\t\ti %s\n" % self.iters)
+        trace.write("\t\ti %s\n" % (self.iters - 1))
         trace.write("\t\tparticle id %s\n" % self.id)
         trace.write("\t\tprocess id %d\n" % getpid())
         trace.write("xr %f\n" % self.pos.score)
@@ -169,7 +169,9 @@ async def simulate(scene, config, data_dir, save_name):
     prog = "build/bin/comm_norender"
     # the 0 does not matter since we are using a _norender build
     data_dir += "iters/"
-    args = [str(i) for i in [scene.id, scene.seed, 0, data_dir]]
+    args = [
+        str(i) for i in [scene.id, "--seed", scene.seed, "--data", data_dir]
+    ]
     data_dir = "data/" + data_dir
     save = (data_dir, save_name, save_name)
 
@@ -269,8 +271,9 @@ async def run_scenario(run_name, scene, meta_args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
+        prog="pso_opt",
         description="Globally optimize via Particle-Swarms the communication"
-        "model for the Talking Hive project."
+        "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
     parser.add_argument("--n_particles", type=int, default=12)

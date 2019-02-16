@@ -42,7 +42,143 @@ void glfw_error(int err, const char* msg);
 void monitor_connect(GLFWmonitor*, int event);
 void keymap_input(GLFWwindow*);
 
+void cli_error(std::string usage) {
+    fprintf(stderr, "%s\n", usage.c_str());
+    exit(EXIT_FAILURE);
+}
+
 int main(int argc, char** argv) {
+    // TODO: move CLI to io.cpp/h
+    // TODO: make an API for writing/editing CLI
+
+    std::string prog(argv[0]);
+    // register CLI options
+    bool record_read = false;
+    bool is_record = false;
+    bool data_read = false;
+    std::string data_dir = "";
+    bool split_read = false;
+    bool is_split = false;
+    unsigned short split_offset = 0;
+    bool seed_read = false;
+    uint64_t seed = 0;
+
+    // register CLI positionals
+    bool scene_read = false;
+    unsigned scene;
+
+    std::string usage = "Usage: " + prog + " [--help] [--record] [--data dir]"
+        " [--split n] [--seed n] scene";
+
+    // read CLI
+    for (int opti = 1; opti < argc; ++opti) {
+        std::string arg(argv[opti]);
+
+        // read options
+        if (arg == "--help") {
+            printf("%s\n", usage.c_str());
+            exit(EXIT_SUCCESS);
+        } else if (arg == "--record") {
+            // no double options
+            if (record_read) {
+                cli_error("no double options\n" + usage);
+            } else {
+                record_read = true;
+            }
+            // modal flag
+            is_record = true;
+        } else if (arg == "--data") {
+            // no double options
+            if (data_read) {
+                cli_error("no double options\n" + usage);
+            } else {
+                data_read = true;
+            }
+            // requires argument
+            ++opti;
+            if (!(opti < argc)) {
+                cli_error("no arg to read\n" + usage);
+            }
+            arg = argv[opti];
+            if (arg.find("--") == std::string::npos) {
+                // reads a string
+                data_dir = argv[opti];
+            } else {
+                cli_error("bad arg\n" + usage);
+            }
+        } else if (arg == "--split") {
+            // no double options
+            if (split_read) {
+                cli_error("no double options\n" + usage);
+            } else {
+                split_read = true;
+            }
+            // requires argument
+            ++opti;
+            if (!(opti < argc)) {
+                cli_error("no arg to read\n" + usage);
+            }
+            arg = argv[opti];
+            if (arg.find("--") == std::string::npos) {
+                // reads a number
+                is_split = true;
+                split_offset = std::stoi(argv[opti]);
+            } else {
+                cli_error("bad arg\n" + usage);
+            }
+        } else if (arg == "--seed") {
+            // no double options
+            if (seed_read) {
+                cli_error("no double options\n" + usage);
+            } else {
+                seed_read = true;
+            }
+            // requires argument
+            ++opti;
+            if (!(opti < argc)) {
+                cli_error("no arg to read\n" + usage);
+            }
+            arg = argv[opti];
+            if (arg.find("--") == std::string::npos) {
+                // reads a number
+                seed = std::stoull(arg);
+            } else {
+                cli_error("bad arg\n" + usage);
+            }
+
+        } else {
+            // read positionals
+            if (scene_read) {
+                // no further positionals
+                cli_error("no further positionals\n" + usage);
+            }
+            // required positional
+            if (arg.find("--") == std::string::npos) {
+                scene_read = true;
+                // read _unsigned_ int
+                scene = std::stoi(arg);
+            } else {
+                cli_error("unknown option\n" + usage);
+            }
+            if (scene < 0) {
+                cli_error("gg! Invalid demo ID.");
+            }
+        }
+    }
+    // were required arguments input
+    if (!scene_read) {
+        cli_error(usage);
+    }
+
+    // argument doing
+    data_dir = std::string(PROJECT_DIR) + "data/" + data_dir;
+    if (is_split) {
+        ui::paused = false;
+    }
+    Seeder s;
+    s.seed(seed);
+
+    // create context, window, viewport
 #ifndef NO_RENDER
     // Setup pre-init glfw
     glfwSetErrorCallback(glfw_error);
@@ -87,7 +223,8 @@ int main(int argc, char** argv) {
     glm::vec<2, int> size(min(640, mode0->width), min(480, mode0->height));
     GLFWwindow* window;
     if (argc > 3) {
-        window = glfwCreateWindow(size.x, size.y, argv[3], nullptr, nullptr);
+        window =
+            glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
     } else {
         window = glfwCreateWindow(size.x, size.y, "gg", nullptr, nullptr);
     }
@@ -96,17 +233,10 @@ int main(int argc, char** argv) {
         glfwTerminate();
         return EXIT_FAILURE;
     }
-    // center window
-    int nudge = -1;
-    if (argc > 3) {
-        nudge = std::stoi(argv[3]);
-#    ifndef NO_RENDER
-        ui::paused = false;
-#    endif
-    }
+
     glfwSetWindowPos(
         window,
-        mode0->width / 2 - nudge * size.x,
+        mode0->width / 2 - split_offset * size.x,
         mode0->height / 2 - size.y / 2
     );
     glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);
@@ -122,33 +252,9 @@ int main(int argc, char** argv) {
     glViewport(0, 0, size.x, size.y);
 #endif
 
-    if (argc > 2) {
-        Seeder s;
-        s.seed(std::stoull(argv[2]));
-    }
-    Seeder s;
-    if (argc == 1) {
-        cerr << "gg! Failed to create demo.\n";
-#ifndef NO_RENDER
-        glfwTerminate();
-#endif
-        return EXIT_FAILURE;
-    }
-    int scn_i = std::stoi(argv[1]);
-    if (scn_i < 0) {
-        cerr << "gg! Invalid demo ID.\n";
-#ifndef NO_RENDER
-        glfwTerminate();
-#endif
-        return EXIT_FAILURE;
-    }
-
-    demo::init(static_cast<unsigned>(scn_i));
+    // system initialization
+    demo::init(scene);
 #ifndef NO_COMM
-    std::string data_dir = std::string(PROJECT_DIR) + "/data/";
-    if (argc > 4) {
-        data_dir += argv[4];
-    }
     comm::init(data_dir);
 #endif
     ai::init();
@@ -158,15 +264,16 @@ int main(int argc, char** argv) {
     render::init(size);
 #endif
 
-    // main loop
+    // main loop initialization
     Timer init_time;
     Timer frame_time;
     unsigned total_frames = 0;
     unsigned fps = 0;
     auto last_s = init_time.time();
     bool all_done = false;
-
     prewarm_game(all_done, total_frames);
+
+    // main loop
     while (
         !all_done
 #ifndef NO_RENDER
@@ -176,14 +283,7 @@ int main(int argc, char** argv) {
 #ifndef NO_RENDER
         ////UI: would iterate over controllers, but it just handles specific
         // entities for now
-        if (ui::paused) {
-            glfwWaitEvents();
-        } else {
-            glfwPollEvents();
-        }
-        // input handling
         ui::handle_input(window, frame_time.delta_s());
-
         if (ui::paused) {
             continue;
         }
@@ -204,9 +304,6 @@ int main(int argc, char** argv) {
         double total_time = frame_time - init_time;
         // frame_time.delta_s()
         all_done = demo::run(1.f / 60.f, total_time, total_frames);
-#ifndef NO_RENDER
-        glfwSetWindowShouldClose(window, all_done);
-#endif
 
 #ifndef NO_COMM
         comm::run();
@@ -219,9 +316,7 @@ int main(int argc, char** argv) {
 
         ////Physics: iterates over dynamics, which often depend on boundvolumes,
         // and transforms.
-        physics::simulate(
-            1.f / 60.f
-        ); // static_cast<float>(frame_time.delta_s()));
+        physics::simulate(1.f / 60.f); // (frame_time.delta_s()));
 
         ////sync: currently some components have redundant information that
         // needs to be synced every frame.
