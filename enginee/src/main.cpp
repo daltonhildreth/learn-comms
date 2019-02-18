@@ -13,10 +13,12 @@
 #endif
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <any>
 #include <cstdint>
 #include <cstdlib>
 #include <glm/vec2.hpp>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "ai/ai.h"
@@ -49,19 +51,21 @@ void cli_error(std::string usage) {
 
 int main(int argc, char** argv) {
     // TODO: move CLI to io.cpp/h
-    // TODO: make an API for writing/editing CLI
 
     std::string prog(argv[0]);
     // register CLI options
-    bool record_read = false;
     bool is_record = false;
-    bool data_read = false;
-    std::string data_dir = "";
-    bool split_read = false;
     bool is_split = false;
-    unsigned short split_offset = 0;
-    bool seed_read = false;
+    std::string data_dir = "";
+    unsigned split_offset = 0;
     uint64_t seed = 0;
+    cli::Options opts = {
+        {"help", cli::opt(nullptr, nullptr, nullptr)},
+        {"record", cli::opt(&is_record, nullptr, nullptr)},
+        {"data", cli::opt(nullptr, &data_dir, I(forward<string>))},
+        {"split", cli::opt(&is_split, &split_offset, I(stoi))},
+        {"seed", cli::opt(nullptr, &seed, I(stoull))},
+    };
 
     // register CLI positionals
     bool scene_read = false;
@@ -73,77 +77,31 @@ int main(int argc, char** argv) {
     // read CLI
     for (int opti = 1; opti < argc; ++opti) {
         std::string arg(argv[opti]);
+        bool is_opt = arg.substr(0, 2) == "--";
 
         // read options
-        if (arg == "--help") {
-            printf("%s\n", usage.c_str());
-            exit(EXIT_SUCCESS);
-        } else if (arg == "--record") {
-            // no double options
-            if (record_read) {
+        cli::Options::iterator key;
+        if (is_opt && (key = opts.find(arg.substr(2))) != opts.end()) {
+            cli::Option& opt = *key->second;
+            if (!opt.see()) {
                 cli_error("no double options\n" + usage);
-            } else {
-                record_read = true;
             }
-            // modal flag
-            is_record = true;
-        } else if (arg == "--data") {
-            // no double options
-            if (data_read) {
-                cli_error("no double options\n" + usage);
-            } else {
-                data_read = true;
+            opt.flag();
+            if (opt.has_arg()) {
+                ++opti;
+                if (!(opti < argc)) {
+                    cli_error("no arg to read\n" + usage);
+                }
+                arg = argv[opti];
+                if (arg.find("-") == std::string::npos) {
+                    opt.parse(arg);
+                } else {
+                    cli_error("bad arg\n" + usage);
+                }
             }
-            // requires argument
-            ++opti;
-            if (!(opti < argc)) {
-                cli_error("no arg to read\n" + usage);
-            }
-            arg = argv[opti];
-            if (arg.find("--") == std::string::npos) {
-                // reads a string
-                data_dir = argv[opti];
-            } else {
-                cli_error("bad arg\n" + usage);
-            }
-        } else if (arg == "--split") {
-            // no double options
-            if (split_read) {
-                cli_error("no double options\n" + usage);
-            } else {
-                split_read = true;
-            }
-            // requires argument
-            ++opti;
-            if (!(opti < argc)) {
-                cli_error("no arg to read\n" + usage);
-            }
-            arg = argv[opti];
-            if (arg.find("--") == std::string::npos) {
-                // reads a number
-                is_split = true;
-                split_offset = std::stoi(argv[opti]);
-            } else {
-                cli_error("bad arg\n" + usage);
-            }
-        } else if (arg == "--seed") {
-            // no double options
-            if (seed_read) {
-                cli_error("no double options\n" + usage);
-            } else {
-                seed_read = true;
-            }
-            // requires argument
-            ++opti;
-            if (!(opti < argc)) {
-                cli_error("no arg to read\n" + usage);
-            }
-            arg = argv[opti];
-            if (arg.find("--") == std::string::npos) {
-                // reads a number
-                seed = std::stoull(arg);
-            } else {
-                cli_error("bad arg\n" + usage);
+            if (!opt._flag && !opt.has_arg()) {
+                printf("%s\n", usage.c_str());
+                exit(EXIT_SUCCESS);
             }
 
         } else {

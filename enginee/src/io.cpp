@@ -9,6 +9,22 @@
 
 using namespace std;
 
+namespace cli {
+void Option::flag() {
+    if (_flag) {
+        *_flag = true;
+    }
+}
+
+bool Option::see() {
+    if (_seen) {
+        return false;
+    } else {
+        return _seen = true;
+    }
+}
+} // namespace cli
+
 optional<const string> read_file(const string& path) {
     ifstream file(path, ios::in | ios::binary);
     if (!file) {
