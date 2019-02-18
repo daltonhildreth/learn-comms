@@ -48,80 +48,30 @@ void cli_error(std::string usage) {
 }
 
 int main(int argc, char** argv) {
-    // TODO: move CLI to io.cpp/h
-
-    std::string prog(argv[0]);
     // register CLI options
     bool is_record = false;
     bool is_split = false;
     std::string data_dir = "";
     unsigned split_offset = 0;
     uint64_t seed = 0;
-    cli::Options opts = {
-        {"help", cli::opt(nullptr, nullptr, nullptr)},
-        {"record", cli::opt(&is_record, nullptr, nullptr)},
-        {"data", cli::opt(nullptr, &data_dir, I(forward<string>))},
-        {"split", cli::opt(&is_split, &split_offset, I(stoi))},
-        {"seed", cli::opt(nullptr, &seed, I(stoull))},
-    };
 
     // register CLI positionals
     unsigned scene;
-    cli::Positionals poss = { cli::pos(scene, I(stoi)) };
-
-    std::string usage = "Usage: " + prog + " [--help] [--record] [--data dir]"
-        " [--split n] [--seed n] scene";
 
     // read CLI
-    cli::Positionals::iterator pos = poss.begin();
-    for (int opti = 1; opti < argc; ++opti) {
-        std::string arg(argv[opti]);
-        bool is_opt = arg.substr(0, 2) == "--";
-
-        // read options
-        cli::Options::iterator key;
-        if (is_opt && (key = opts.find(arg.substr(2))) != opts.end()) {
-            cli::Option& opt = *key->second;
-            if (!opt.see()) {
-                cli_error("no double options\n" + usage);
-            }
-            opt.flag();
-            if (opt.has_arg()) {
-                ++opti;
-                if (!(opti < argc)) {
-                    cli_error("no arg to read\n" + usage);
-                }
-                arg = argv[opti];
-                if (arg.find("-") == std::string::npos) {
-                    opt.parse(arg);
-                } else {
-                    cli_error("bad arg\n" + usage);
-                }
-            }
-            if (!opt._flag && !opt.has_arg()) {
-                printf("%s\n", usage.c_str());
-                exit(EXIT_SUCCESS);
-            }
-        } else {
-            // read positionals
-            if (pos == poss.end()) {
-                cli_error("no further positionals\n" + usage);
-            }
-            if (arg.find("--") == std::string::npos) {
-                (*pos)->see();
-                (*pos)->parse(arg);
-                ++pos;
-            } else {
-                cli_error("unknown option\n" + usage);
-            }
-        }
-    }
-    // were required arguments input
-    for (const auto& arg : poss) {
-        if (!arg->_seen) {
-            cli_error("missing required positional\n" + usage);
-        }
-    }
+    std::string prog(argv[0]);
+    cli::parse(
+        argc,
+        argv,
+        {
+            {"help", cli::opt(nullptr)}, // uses hack
+            {"record", cli::opt(&is_record)},
+            {"data", cli::opt(nullptr, &data_dir, I(forward<string>), "dir")},
+            {"split", cli::opt(&is_split, &split_offset, I(stoi), "n")},
+            {"seed", cli::opt(nullptr, &seed, I(stoull), "n")},
+        },
+        {cli::pos(scene, I(stoi), "scene")}
+    );
 
     // argument doing
     data_dir = std::string(PROJECT_DIR) + "data/" + data_dir;
@@ -174,13 +124,8 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for Mac OSX to work
     glm::vec<2, int> size(min(640, mode0->width), min(480, mode0->height));
-    GLFWwindow* window;
-    if (argc > 3) {
-        window =
-            glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
-    } else {
-        window = glfwCreateWindow(size.x, size.y, "gg", nullptr, nullptr);
-    }
+    GLFWwindow* window =
+        glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
     if (!window) {
         cerr << "gg! Failed to create window context.\n";
         glfwTerminate();
