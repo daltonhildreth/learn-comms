@@ -41,6 +41,24 @@ template <typename T, typename F> struct OptionT: public Option {
     std::function<T(std::string)> _read;
 };
 
+struct Positional {
+    virtual void parse(std::string s) = 0;
+    bool see();
+    bool _seen = false;
+};
+
+template <typename T, typename F> struct PositionalT: public Positional {
+    PositionalT<T, F>(T& arg, F& read):
+        Positional(),
+        _arg(arg),
+        _read(read) {}
+    void parse(std::string s) {
+        _arg = _read(s);
+    }
+    T& _arg;
+    std::function<T(std::string)> _read;
+};
+
 template <typename T, typename F> Option* opt(bool* flag, T* arg, F read) {
     return new OptionT<T, F>(flag, arg, read);
 }
@@ -48,7 +66,12 @@ template <typename F> Option* opt(bool* flag, std::nullptr_t, F read) {
     return opt<int>(flag, (int*)nullptr, read);
 }
 
+template <typename T, typename F> Positional* pos(T& arg, F read) {
+    return new PositionalT<T, F>(arg, read);
+}
+
 typedef std::unordered_map<std::string, Option*> Options;
+typedef std::vector<Positional*> Positionals;
 }; // namespace cli
 
 std::optional<const std::string> read_file(const std::string& path);

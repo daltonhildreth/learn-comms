@@ -23,6 +23,14 @@ bool Option::see() {
         return _seen = true;
     }
 }
+
+bool Positional::see() {
+    if (_seen) {
+        return false;
+    } else {
+        return _seen = true;
+    }
+}
 } // namespace cli
 
 optional<const string> read_file(const string& path) {

@@ -11,6 +11,17 @@
 #    undef far
 #    define NOMINMAX
 #endif
+#include "Pool.h"
+#include "ai/ai.h"
+#include "ai/physics.h" // TOOD: move physics into its own directory :p
+#include "comms/comm.h"
+#include "demo/demo.h"
+#include "io.h"
+#include "render.h"
+#include "ui.h"
+#include "util/Seeder.h"
+#include "util/Timer.h"
+#include "util/debug.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <any>
@@ -20,20 +31,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
-#include "ai/ai.h"
-#include "io.h"
-#include "render.h"
-#include "ui.h"
-#include "util/Timer.h"
-// TOOD: move physics into its own directory :p
-#include "Pool.h"
-#include "ai/physics.h"
-#include "util/debug.h"
-
-#include "comms/comm.h"
-#include "demo/demo.h"
-#include "util/Seeder.h"
+#include <utility>
 
 #include <fstream>
 
@@ -68,13 +66,14 @@ int main(int argc, char** argv) {
     };
 
     // register CLI positionals
-    bool scene_read = false;
     unsigned scene;
+    cli::Positionals poss = { cli::pos(scene, I(stoi)) };
 
     std::string usage = "Usage: " + prog + " [--help] [--record] [--data dir]"
         " [--split n] [--seed n] scene";
 
     // read CLI
+    cli::Positionals::iterator pos = poss.begin();
     for (int opti = 1; opti < argc; ++opti) {
         std::string arg(argv[opti]);
         bool is_opt = arg.substr(0, 2) == "--";
@@ -103,29 +102,25 @@ int main(int argc, char** argv) {
                 printf("%s\n", usage.c_str());
                 exit(EXIT_SUCCESS);
             }
-
         } else {
             // read positionals
-            if (scene_read) {
-                // no further positionals
+            if (pos == poss.end()) {
                 cli_error("no further positionals\n" + usage);
             }
-            // required positional
             if (arg.find("--") == std::string::npos) {
-                scene_read = true;
-                // read _unsigned_ int
-                scene = std::stoi(arg);
+                (*pos)->see();
+                (*pos)->parse(arg);
+                ++pos;
             } else {
                 cli_error("unknown option\n" + usage);
-            }
-            if (scene < 0) {
-                cli_error("gg! Invalid demo ID.");
             }
         }
     }
     // were required arguments input
-    if (!scene_read) {
-        cli_error(usage);
+    for (const auto& arg : poss) {
+        if (!arg->_seen) {
+            cli_error("missing required positional\n" + usage);
+        }
     }
 
     // argument doing
