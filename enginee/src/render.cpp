@@ -24,6 +24,7 @@ using namespace std;
 #include "demo/demo.h"
 namespace render {
 float cam_dist = 1.f;
+GLFWwindow* window;
 unique_ptr<Shader> mtl;
 vector<unique_ptr<DirLight>> dir_lights;
 vector<unique_ptr<PointLight>> point_lights;
@@ -75,7 +76,6 @@ GLuint create_tex(std::string path) {
     return tex;
 }
 
-#ifndef NO_RENDER
 static glm::vec3 uv2rgb(glm::vec3 Luv) {
     glm::vec3 rgb = {
         // Here the 0.5 in each equation is just the desired
@@ -89,7 +89,6 @@ static glm::vec3 uv2rgb(glm::vec3 Luv) {
     // Clamp the results to 0 to 1
     return glm::max(glm::vec3(0.f), glm::min(glm::vec3(1.f), rgb));
 }
-#endif
 
 static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     // https://www.easyrgb.com/en/math.php
@@ -134,7 +133,6 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     return rgb;
 }
 
-#ifndef NO_RENDER
 static glm::vec3 Lx_2rg_(glm::vec3 Lx_) {
     float x = Lx_[1];
     return x < 0 ? glm::vec3(-x, 0, 0) : glm::vec3(0, x, 0);
@@ -144,7 +142,86 @@ static glm::vec3 L_y2_gb(glm::vec3 L_y) {
     float y = L_y[2];
     return y < 0 ? glm::vec3(0, 0, -y) : glm::vec3(0, y, 0);
 }
-#endif
+
+static void _glfw_error(int err, const char* msg) {
+    cerr << "gg! GLFW error: #" << err << " " << msg << "\n";
+}
+
+static void _monitor_connect(GLFWmonitor* m, int event) {
+    if (event == GLFW_CONNECTED) {
+        clog << "gg. Monitor " << glfwGetMonitorName(m) << " connected.\n";
+    } else if (event == GLFW_DISCONNECTED) {
+        clog << "gg. Monitor " << glfwGetMonitorName(m) << " disconnected.\n";
+    }
+}
+
+glm::vec<2, int> create_context_window(std::string prog, unsigned split_offset) {
+    // Setup pre-init glfw
+    glfwSetErrorCallback(_glfw_error);
+
+    // initialize glfw, output version.
+    if (!glfwInit()) {
+        cerr << "gg! Failed to init glfw; exiting.\n";
+        exit(EXIT_FAILURE);
+    } else {
+        clog //
+            << "gg. GLFW compiled as v" //
+            << GLFW_VERSION_MAJOR << "." //
+            << GLFW_VERSION_MINOR << "." //
+            << GLFW_VERSION_REVISION << "\n";
+        int major, minor, revision;
+        glfwGetVersion(&major, &minor, &revision);
+        clog //
+            << "gg. GLFW running as v" //
+            << major << "." << minor << "." << revision << "\n" //
+            << "gg. GLFW version string " << glfwGetVersionString() << "\n";
+    }
+
+    // obtain primary monitor
+    int num_monitor;
+    GLFWmonitor** monitors = glfwGetMonitors(&num_monitor);
+    if (!monitors) {
+        cerr << "gg! No monitor found.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    } else {
+        clog << "gg. Found " << num_monitor << " monitors. Using primary.\n";
+    }
+    // primary monitor is 0; so, mode0 is the primary video mode.
+    const GLFWvidmode* mode0 = glfwGetVideoMode(monitors[0]);
+    glfwSetMonitorCallback(_monitor_connect);
+
+    // initialize window and OpenGL context
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for Mac OSX to work
+    glm::vec<2, int> size{min(640, mode0->width), min(480, mode0->height)};
+    window = glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
+    if (!window) {
+        cerr << "gg! Failed to create window context.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+
+    glfwSetWindowPos(
+        window,
+        mode0->width / 2 - split_offset * size.x,
+        mode0->height / 2 - size.y / 2
+    );
+    glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);
+    glfwMakeContextCurrent(window);
+
+    // load glad in window context
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+        cerr << "gg! Failed to load OpenGL context.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+
+    glViewport(0, 0, size.x, size.y);
+    return size;
+}
 
 void init(glm::vec<2, int> dims) {
     ui::add_handler(input_key);
@@ -244,6 +321,13 @@ void draw() {
             m.draw();
         }
     });
+
+    // double buffer
+    glfwSwapBuffers(window);
+}
+
+void terminate() {
+    glfwTerminate();
 }
 
 // custom handler for input
@@ -281,7 +365,6 @@ void input_key(GLFWwindow* w, double ddt) {
     glm::vec3 up_new = cam->up() + roll * cam->right();
     cam->set_rot(cam->look_dir(), up_new);
 
-#ifndef NO_RENDER
     if (ui::edge_up(GLFW_KEY_X)) {
         if (glfwGetInputMode(w, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
             glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -298,9 +381,6 @@ void input_key(GLFWwindow* w, double ddt) {
     } else if (ui::edge_up(GLFW_KEY_3)) {
         comm_vis = L_y2_gb;
     }
-#else
-    UNUSED(w);
-#endif
 }
 
 void input_cursor(GLFWwindow*, double) { // ddt) {

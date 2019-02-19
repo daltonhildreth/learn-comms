@@ -555,8 +555,6 @@ bool run(double dt, double time, unsigned frame_count) {
     });
     if (time - last_s >= 1) {
         std::clog << "NUM DONE: " << num_done << "\n";
-        std::clog << "FRAMES: " << frame_count << "\n";
-        std::clog.flush();
         last_s = time;
     }
     for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
