@@ -25,6 +25,13 @@ using namespace std;
 namespace render {
 float cam_dist = 1.f;
 GLFWwindow* window;
+
+bool is_record = false;
+static GLuint fbo;
+static GLuint rbo[2];
+static int* video_buf;
+static FILE* ffmpeg;
+
 unique_ptr<Shader> mtl;
 vector<unique_ptr<DirLight>> dir_lights;
 vector<unique_ptr<PointLight>> point_lights;
@@ -155,7 +162,10 @@ static void _monitor_connect(GLFWmonitor* m, int event) {
     }
 }
 
-glm::vec<2, int> create_context_window(std::string prog, unsigned split_offset) {
+glm::vec<2, int> create_context_window(
+    std::string prog,
+    unsigned split_offset
+) {
     // Setup pre-init glfw
     glfwSetErrorCallback(_glfw_error);
 
@@ -196,6 +206,9 @@ glm::vec<2, int> create_context_window(std::string prog, unsigned split_offset) 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for Mac OSX to work
+    if (is_record) {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    }
     glm::vec<2, int> size{min(640, mode0->width), min(480, mode0->height)};
     window = glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
     if (!window) {
@@ -224,6 +237,44 @@ glm::vec<2, int> create_context_window(std::string prog, unsigned split_offset) 
 }
 
 void init(glm::vec<2, int> dims) {
+    if (is_record) {
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glGenRenderbuffers(2, rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo[0]);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, dims.x, dims.y);
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo[0]
+        );
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo[1]);
+        glRenderbufferStorage(
+            GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, dims.x, dims.y
+        );
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo[1]
+        );
+
+        if ( //
+            glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
+        ) {
+            printf("Uh, oh! Framebuffer is incomplete!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // pipe frames to ffmpeg
+        std::string cmd = "ffmpeg -r 60 -f rawvideo -pix_fmt rgba"
+            " -s " + std::to_string(dims.x) + "x" + std::to_string(dims.y)
+            + " -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 17"
+            " -vf vflip"
+        #ifndef NO_COMM
+            " comm.mp4";
+        #else
+            " ttc.mp4";
+        #endif
+        ffmpeg = popen(cmd.c_str(), "w");
+        video_buf = new int[dims.x * dims.y];
+    }
+
     ui::add_handler(input_key);
     ui::add_handler(input_cursor);
     ui::add_handler(input_scroll);
@@ -299,6 +350,9 @@ void draw() {
     // TODO: (pre?)rendering by scene graph?
     // TODO: dynamic lighting
 
+    if (is_record) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    }
     POOL.for_<Mesh>([&](Mesh& m, Entity& e) {
         auto t = POOL.get<Transform>(e);
         if (t) {
@@ -322,11 +376,23 @@ void draw() {
         }
     });
 
+    if (is_record) {
+        // glNamedFramebufferReadBuffer(fbo[back], GL_COLOR_ATTACHMENT0);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glReadPixels(0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, &video_buf[0]);
+        fwrite(video_buf, sizeof(int) * 640 * 480, 1, ffmpeg);
+    }
     // double buffer
     glfwSwapBuffers(window);
 }
 
 void terminate() {
+    if (is_record) {
+        delete[] video_buf;
+        pclose(ffmpeg);
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteRenderbuffers(2, rbo);
+    }
     glfwTerminate();
 }
 

@@ -41,8 +41,6 @@ void prewarm_game(bool& all_done);
 
 int main(int argc, char** argv) {
     // register CLI options
-    bool is_record = false;
-    bool is_split = false;
     std::string data_dir = "";
     unsigned split_offset = 0;
     uint64_t seed = 0;
@@ -57,9 +55,9 @@ int main(int argc, char** argv) {
         argv,
         {
             {"help", cli::opt(nullptr)}, // uses hack
-            {"record", cli::opt(&is_record)},
+            {"record", cli::opt(&render::is_record)},
             {"data", cli::opt(nullptr, &data_dir, I(forward<string>), "dir")},
-            {"split", cli::opt(&is_split, &split_offset, I(stoi), "n")},
+            {"split", cli::opt(nullptr, &split_offset, I(stoi), "n")},
             {"seed", cli::opt(nullptr, &seed, I(stoull), "n")},
         },
         {cli::pos(scene, I(stoi), "scene")}
@@ -67,9 +65,6 @@ int main(int argc, char** argv) {
 
     // argument doing
     data_dir = std::string(PROJECT_DIR) + "data/" + data_dir;
-    if (is_split) {
-        ui::paused = false;
-    }
     Seeder s;
     s.seed(seed);
 
@@ -121,6 +116,7 @@ int main(int argc, char** argv) {
         if (1.f <= frame_time - last_s) {
             clog << "FPS: " << fps << "\n";
             clog << "FRAMES: " << total_frames << "\n";
+            clog << flush;
             fps = 0;
             last_s = frame_time.time();
         } else {

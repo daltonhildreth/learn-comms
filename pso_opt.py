@@ -246,6 +246,12 @@ def gen_result(run, scene, minimum):
     src = (src, min_file, min_file)
     copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
     copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
+
+    # simulate_with_video(scene, np.zeroes(...), other_stuff_not_needed )
+    # simulate_with_video(scene, min_file.config, other_stuff_not_needed )
+
+    # ffmpeg -i ttc.mp4 -i comm.mp4 -filter_complex hstack split.mp4
+
     return (
         str(scene.id)
         + ("\tbest at config: " + min_file)
@@ -280,7 +286,7 @@ if __name__ == "__main__":
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)
     parser.add_argument("--w_global", type=float, default=0.2)
-    parser.add_argument("--seed", type=int, default=511607575)
+    parser.add_argument("--seed", type=int, default=511_607_575)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--convergence", type=float, default=1e-9)
     args = parser.parse_args()
