@@ -1,7 +1,8 @@
 from random import uniform, random
 from shutil import copyfile
 from copy import copy
-from os import mkdir, makedirs, getpid
+from os import listdir, path, mkdir, makedirs, getpid
+from os.path import isdir
 from subprocess import Popen, PIPE
 from itertools import chain
 import argparse
@@ -22,17 +23,20 @@ def write_config(file, config):
         file.write("\n")
 
 
-def read_result(file):
-    # will get results to influence nn choice from M
-    avg_vel = float(file.readline().strip())
-    confident_time = float(file.readline().strip())
-    return result_metric((avg_vel, confident_time))
+def read_result(result_file):
+    def read_float(file):
+        return float(file.readline().strip())
 
+    def aggregate(result):
+        # this limits the results to just Julio's time confidence metric
+        _, confident_time = result
+        return confident_time
 
-def result_metric(result):
-    # this limits the results to just Julio's time confidence metric
-    _, confident_time = result
-    return confident_time
+    with open(result_file, "r") as f:
+        # will get results to influence nn choice from M
+        avg_vel = read_float(f)
+        confident_time = read_float(f)
+        return aggregate((avg_vel, confident_time))
 
 
 def pretty_mat(np_m):
@@ -80,7 +84,7 @@ class Particle:
         self.vel = vel
 
     def debug(self, trace, base, global_min):
-        trace.write("\t\ti %s\n" % self.iters)
+        trace.write("\t\ti %s\n" % (self.iters - 1))
         trace.write("\t\tparticle id %s\n" % self.id)
         trace.write("\t\tprocess id %d\n" % getpid())
         trace.write("xr %f\n" % self.pos.score)
@@ -131,9 +135,10 @@ class Particle:
 
 
 class Point:
-    def __init__(self, x=None, y=float("inf")):
+    def __init__(self, x=None, y=float("inf"), file=None):
         self.config = x
         self.score = y
+        self.file = file
 
 
 class Scene:
@@ -164,7 +169,8 @@ async def simulate(scene, config, data_dir, save_name):
     prog = "build/bin/comm_norender"
     # the 0 does not matter since we are using a _norender build
     data_dir += "iters/"
-    args = [str(i) for i in [scene.id, scene.seed, 0, data_dir]]
+    args = [scene.id, "--seed", scene.seed, "--data", data_dir]
+    args = [str(i) for i in args]
     data_dir = "data/" + data_dir
     save = (data_dir, save_name, save_name)
 
@@ -175,7 +181,7 @@ async def simulate(scene, config, data_dir, save_name):
     copyfile(sim_config, "%s/%s/%s.config" % save)
 
     print(" ".join([prog] + args))
-    with open("%s/%s/%s.log" % save, "w") as logout_file:
+    with open("%s/%s/%s.out" % save, "w") as logout_file:
         with open("%s/%s/%s.err" % save, "w") as logerr_file:
             sim = await asyncio.create_subprocess_exec(
                 *([prog] + args), stdout=logout_file, stderr=logerr_file
@@ -184,9 +190,35 @@ async def simulate(scene, config, data_dir, save_name):
 
     sim_result = "%s/comms.result" % data_dir
     copyfile(sim_result, "%s/%s/%s.result" % save)
-    with open(sim_result, "r") as result_clone:
-        return Point(config, read_result(result_clone))
+    return Point(config, read_result(sim_result), save_name)
 
+
+async def record(scene, data_dir, with_comm):
+    prog = "build/bin/" + ("" if with_comm else "no") + "comm_render"
+    args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record"]
+    args = [str(i) for i in args]
+    data_dir = "data/" + data_dir
+
+    print(" ".join([prog] + args))
+    with open("%s/%d.out" % (data_dir, scene.id), "w") as logout_file:
+        with open("%s/%d.err" % (data_dir, scene.id), "w") as logerr_file:
+            sim = await asyncio.create_subprocess_exec(
+                *([prog] + args), stdout=logout_file, stderr=logerr_file
+            )
+            await sim.wait()
+
+
+async def hstack(left, right, out):
+    prog = "ffmpeg"
+    args = ["-i", left, "-i", right, "-filter_complex", "hstack", out]
+    args = [str(i) for i in args]
+    print(" ".join([prog] + args))
+    with open("%s.out" % out, "w") as of:
+        with open("%s.err" % out, "w") as er:
+            h = await asyncio.create_subprocess_exec(
+                *([prog] + args), stdout=of, stderr=er
+            )
+            await h.wait()
 
 async def PSO(data_dir, scene, hypers):
     base_scn = copy(scene)
@@ -228,27 +260,60 @@ async def PSO(data_dir, scene, hypers):
         with open("data/" + conv_path, "a") as f_conv:
             f_conv.write("i: " + str(i) + ",  c: " + str(convergence) + "\n")
         if convergence < hypers.max_convergence:
-            return "converged"
-    return "iterated"
+            return "conv", baseline.score, global_min.score, global_min.file
+    return "iter", baseline.score, global_min.score, global_min.file
+
+
+async def gen_result(run, scene, minimum):
+    how, base_val, min_val, min_file = minimum
+    src = "data/%s/%d_train/iters" % (run, scene.id)
+    dst = "data/%s/results/%d_min" % (run, scene.id)
+    makedirs(dst)
+    src = (src, min_file, min_file)
+    copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
+    copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
+
+    dst = "%s/results/%d_min" % (run, scene.id)
+    await record(scene, dst, False)
+    await record(scene, dst, True)
+    dst = "data/" + dst
+    await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
+
+    return (
+        str(scene.id)
+        + ("\tbest at config: " + min_file)
+        + ("\tw/ conf_time: " + str(min_val))
+        + ("\tvs base_conf_time: " + str(base_val))
+        + ("\tby " + how)
+        + "\n"
+    )
+
+
+def agg_result(run, per_result_texts):
+    with open("data/%s/results/best.txt" % run, "w") as best:
+        for text in per_result_texts:
+            best.write(text)
 
 
 async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
-    return await PSO(data_dir, scene, meta_args)
+    minimum = await PSO(data_dir, scene, meta_args)
+    return await gen_result(run_name, scene, minimum)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
+        prog="pso_opt",
         description="Globally optimize via Particle-Swarms the communication"
-        "model for the Talking Hive project."
+        "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
     parser.add_argument("--n_particles", type=int, default=12)
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)
     parser.add_argument("--w_global", type=float, default=0.2)
-    parser.add_argument("--seed", type=int, default=511607575)
+    parser.add_argument("--seed", type=int, default=511_607_575)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--convergence", type=float, default=1e-9)
     args = parser.parse_args()
@@ -273,7 +338,8 @@ if __name__ == "__main__":
             for scene in scenes
         )
         optimize = asyncio.gather(*tasks, return_exceptions=True)
-        event_loop.run_until_complete(optimize)
+        results = event_loop.run_until_complete(optimize)
+        agg_result(args.name, results)
         for i, outcome in enumerate(optimize.result()):
             if isinstance(outcome, Exception):
                 print("ERROR", i, scenes[i], outcome)

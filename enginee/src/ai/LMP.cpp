@@ -12,18 +12,18 @@
 float LMP::ttc(BoundVolume& i, glm::vec2 iv, BoundVolume& j, glm::vec2 jv) {
     // I wish there was a way I didn't have to check the types..
     if (i._vt == BoundVolume::volume_type::CIRC) {
-        Circ& c = dynamic_cast<Circ&>(i);
+        Circ& c = static_cast<Circ&>(i);
         if (j._vt == BoundVolume::volume_type::CIRC) {
-            return ttc_(c, iv, dynamic_cast<Circ&>(j), jv);
+            return ttc_(c, iv, static_cast<Circ&>(j), jv);
         } else if (j._vt == BoundVolume::volume_type::RECT) {
-            return ttc_(c, iv, dynamic_cast<Rect&>(j), jv);
+            return ttc_(c, iv, static_cast<Rect&>(j), jv);
         }
     } else if (i._vt == BoundVolume::volume_type::RECT) {
-        Rect& r = dynamic_cast<Rect&>(i);
+        Rect& r = static_cast<Rect&>(i);
         if (j._vt == BoundVolume::volume_type::RECT) {
-            return LMP::ttc_(r, iv, dynamic_cast<Rect&>(j), jv);
+            return LMP::ttc_(r, iv, static_cast<Rect&>(j), jv);
         } else if (j._vt == BoundVolume::volume_type::CIRC) {
-            return LMP::ttc_(dynamic_cast<Circ&>(j), jv, r, iv);
+            return LMP::ttc_(static_cast<Circ&>(j), jv, r, iv);
         }
     }
     return std::numeric_limits<float>::max();
