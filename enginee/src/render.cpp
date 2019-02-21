@@ -236,7 +236,7 @@ glm::vec<2, int> create_context_window(
     return size;
 }
 
-void init(glm::vec<2, int> dims) {
+void init(glm::vec<2, int> dims, std::string data_dir) {
     if (is_record) {
         glGenFramebuffers(1, &fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -265,12 +265,12 @@ void init(glm::vec<2, int> dims) {
         std::string cmd = "ffmpeg -r 60 -f rawvideo -pix_fmt rgba"
             " -s " + std::to_string(dims.x) + "x" + std::to_string(dims.y)
             + " -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 17"
-            " -vf vflip"
-        #ifndef NO_COMM
-            " comm.mp4";
-        #else
-            " ttc.mp4";
-        #endif
+            " -vf vflip " + data_dir + "/"
+#ifndef NO_COMM
+            + "comm.mp4";
+#else
+            + "ttc.mp4";
+#endif
         ffmpeg = popen(cmd.c_str(), "w");
         video_buf = new int[dims.x * dims.y];
     }

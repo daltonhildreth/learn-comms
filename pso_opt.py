@@ -169,9 +169,8 @@ async def simulate(scene, config, data_dir, save_name):
     prog = "build/bin/comm_norender"
     # the 0 does not matter since we are using a _norender build
     data_dir += "iters/"
-    args = [
-        str(i) for i in [scene.id, "--seed", scene.seed, "--data", data_dir]
-    ]
+    args = [scene.id, "--seed", scene.seed, "--data", data_dir]
+    args = [str(i) for i in args]
     data_dir = "data/" + data_dir
     save = (data_dir, save_name, save_name)
 
@@ -182,7 +181,7 @@ async def simulate(scene, config, data_dir, save_name):
     copyfile(sim_config, "%s/%s/%s.config" % save)
 
     print(" ".join([prog] + args))
-    with open("%s/%s/%s.log" % save, "w") as logout_file:
+    with open("%s/%s/%s.out" % save, "w") as logout_file:
         with open("%s/%s/%s.err" % save, "w") as logerr_file:
             sim = await asyncio.create_subprocess_exec(
                 *([prog] + args), stdout=logout_file, stderr=logerr_file
@@ -193,6 +192,33 @@ async def simulate(scene, config, data_dir, save_name):
     copyfile(sim_result, "%s/%s/%s.result" % save)
     return Point(config, read_result(sim_result), save_name)
 
+
+async def record(scene, data_dir, with_comm):
+    prog = "build/bin/" + ("" if with_comm else "no") + "comm_render"
+    args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record"]
+    args = [str(i) for i in args]
+    data_dir = "data/" + data_dir
+
+    print(" ".join([prog] + args))
+    with open("%s/%d.out" % (data_dir, scene.id), "w") as logout_file:
+        with open("%s/%d.err" % (data_dir, scene.id), "w") as logerr_file:
+            sim = await asyncio.create_subprocess_exec(
+                *([prog] + args), stdout=logout_file, stderr=logerr_file
+            )
+            await sim.wait()
+
+
+async def hstack(left, right, out):
+    prog = "ffmpeg"
+    args = ["-i", left, "-i", right, "-filter_complex", "hstack", out]
+    args = [str(i) for i in args]
+    print(" ".join([prog] + args))
+    with open("%s.out" % out, "w") as of:
+        with open("%s.err" % out, "w") as er:
+            h = await asyncio.create_subprocess_exec(
+                *([prog] + args), stdout=of, stderr=er
+            )
+            await h.wait()
 
 async def PSO(data_dir, scene, hypers):
     base_scn = copy(scene)
@@ -238,7 +264,7 @@ async def PSO(data_dir, scene, hypers):
     return "iter", baseline.score, global_min.score, global_min.file
 
 
-def gen_result(run, scene, minimum):
+async def gen_result(run, scene, minimum):
     how, base_val, min_val, min_file = minimum
     src = "data/%s/%d_train/iters" % (run, scene.id)
     dst = "data/%s/results/%d_min" % (run, scene.id)
@@ -247,10 +273,11 @@ def gen_result(run, scene, minimum):
     copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
     copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
 
-    # simulate_with_video(scene, np.zeroes(...), other_stuff_not_needed )
-    # simulate_with_video(scene, min_file.config, other_stuff_not_needed )
-
-    # ffmpeg -i ttc.mp4 -i comm.mp4 -filter_complex hstack split.mp4
+    dst = "%s/results/%d_min" % (run, scene.id)
+    await record(scene, dst, False)
+    await record(scene, dst, True)
+    dst = "data/" + dst
+    await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
 
     return (
         str(scene.id)
@@ -272,7 +299,7 @@ async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
     minimum = await PSO(data_dir, scene, meta_args)
-    return gen_result(run_name, scene, minimum)
+    return await gen_result(run_name, scene, minimum)
 
 
 if __name__ == "__main__":

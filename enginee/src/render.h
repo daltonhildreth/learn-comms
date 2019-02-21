@@ -31,7 +31,7 @@ GLuint create_tex(std::string path);
 // TODO: combine create and init
 glm::vec<2, int> create_context_window(std::string prog, unsigned offset);
 // TODO: remove init in favor of SceneGraphs
-void init(glm::vec<2, int>);
+void init(glm::vec<2, int>, std::string);
 void draw();
 void terminate();
 

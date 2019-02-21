@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     physics::init();
 #ifndef NO_RENDER
     ui::init_callbacks(render::window);
-    render::init(size);
+    render::init(size, data_dir);
 #endif
 
     // main loop initialization
@@ -111,16 +111,15 @@ int main(int argc, char** argv) {
 
         frame_time.tick();
         ++total_frames;
+        ++fps;
 
         // FPS recorder
         if (1.f <= frame_time - last_s) {
-            clog << "FPS: " << fps << "\n";
+            clog << "\nFPS: " << fps / (frame_time - last_s) << "\n";
             clog << "FRAMES: " << total_frames << "\n";
             clog << flush;
             fps = 0;
             last_s = frame_time.time();
-        } else {
-            ++fps;
         }
 
         double total_time = frame_time - init_time;
