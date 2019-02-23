@@ -11,27 +11,27 @@
 #    undef far
 #    define NOMINMAX
 #endif
+#include "Pool.h"
+#include "ai/ai.h"
+#include "ai/physics.h" // TOOD: move physics into its own directory :p
+#include "comms/comm.h"
+#include "demo/demo.h"
+#include "io.h"
+#include "render.h"
+#include "ui.h"
+#include "util/Seeder.h"
+#include "util/Timer.h"
+#include "util/debug.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <any>
 #include <cstdint>
 #include <cstdlib>
 #include <glm/vec2.hpp>
 #include <iostream>
+#include <memory>
 #include <string>
-
-#include "ai/ai.h"
-#include "io.h"
-#include "render.h"
-#include "ui.h"
-#include "util/Timer.h"
-// TOOD: move physics into its own directory :p
-#include "Pool.h"
-#include "ai/physics.h"
-#include "util/debug.h"
-
-#include "comms/comm.h"
-#include "demo/demo.h"
-#include "util/Seeder.h"
+#include <utility>
 
 #include <fstream>
 
@@ -42,7 +42,46 @@ void glfw_error(int err, const char* msg);
 void monitor_connect(GLFWmonitor*, int event);
 void keymap_input(GLFWwindow*);
 
+void cli_error(std::string usage) {
+    fprintf(stderr, "%s\n", usage.c_str());
+    exit(EXIT_FAILURE);
+}
+
 int main(int argc, char** argv) {
+    // register CLI options
+    bool is_record = false;
+    bool is_split = false;
+    std::string data_dir = "";
+    unsigned split_offset = 0;
+    uint64_t seed = 0;
+
+    // register CLI positionals
+    unsigned scene;
+
+    // read CLI
+    std::string prog(argv[0]);
+    cli::parse(
+        argc,
+        argv,
+        {
+            {"help", cli::opt(nullptr)}, // uses hack
+            {"record", cli::opt(&is_record)},
+            {"data", cli::opt(nullptr, &data_dir, I(forward<string>), "dir")},
+            {"split", cli::opt(&is_split, &split_offset, I(stoi), "n")},
+            {"seed", cli::opt(nullptr, &seed, I(stoull), "n")},
+        },
+        {cli::pos(scene, I(stoi), "scene")}
+    );
+
+    // argument doing
+    data_dir = std::string(PROJECT_DIR) + "data/" + data_dir;
+    if (is_split) {
+        ui::paused = false;
+    }
+    Seeder s;
+    s.seed(seed);
+
+    // create context, window, viewport
 #ifndef NO_RENDER
     // Setup pre-init glfw
     glfwSetErrorCallback(glfw_error);
@@ -85,28 +124,17 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for Mac OSX to work
     glm::vec<2, int> size(min(640, mode0->width), min(480, mode0->height));
-    GLFWwindow* window;
-    if (argc > 3) {
-        window = glfwCreateWindow(size.x, size.y, argv[3], nullptr, nullptr);
-    } else {
-        window = glfwCreateWindow(size.x, size.y, "gg", nullptr, nullptr);
-    }
+    GLFWwindow* window =
+        glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
     if (!window) {
         cerr << "gg! Failed to create window context.\n";
         glfwTerminate();
         return EXIT_FAILURE;
     }
-    // center window
-    int nudge = -1;
-    if (argc > 3) {
-        nudge = std::stoi(argv[3]);
-#    ifndef NO_RENDER
-        ui::paused = false;
-#    endif
-    }
+
     glfwSetWindowPos(
         window,
-        mode0->width / 2 - nudge * size.x,
+        mode0->width / 2 - split_offset * size.x,
         mode0->height / 2 - size.y / 2
     );
     glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);
@@ -122,33 +150,9 @@ int main(int argc, char** argv) {
     glViewport(0, 0, size.x, size.y);
 #endif
 
-    if (argc > 2) {
-        Seeder s;
-        s.seed(std::stoull(argv[2]));
-    }
-    Seeder s;
-    if (argc == 1) {
-        cerr << "gg! Failed to create demo.\n";
-#ifndef NO_RENDER
-        glfwTerminate();
-#endif
-        return EXIT_FAILURE;
-    }
-    int scn_i = std::stoi(argv[1]);
-    if (scn_i < 0) {
-        cerr << "gg! Invalid demo ID.\n";
-#ifndef NO_RENDER
-        glfwTerminate();
-#endif
-        return EXIT_FAILURE;
-    }
-
-    demo::init(static_cast<unsigned>(scn_i));
+    // system initialization
+    demo::init(scene);
 #ifndef NO_COMM
-    std::string data_dir = std::string(PROJECT_DIR) + "/data/";
-    if (argc > 4) {
-        data_dir += argv[4];
-    }
     comm::init(data_dir);
 #endif
     ai::init();
@@ -158,15 +162,16 @@ int main(int argc, char** argv) {
     render::init(size);
 #endif
 
-    // main loop
+    // main loop initialization
     Timer init_time;
     Timer frame_time;
     unsigned total_frames = 0;
     unsigned fps = 0;
     auto last_s = init_time.time();
     bool all_done = false;
-
     prewarm_game(all_done, total_frames);
+
+    // main loop
     while (
         !all_done
 #ifndef NO_RENDER
@@ -176,14 +181,7 @@ int main(int argc, char** argv) {
 #ifndef NO_RENDER
         ////UI: would iterate over controllers, but it just handles specific
         // entities for now
-        if (ui::paused) {
-            glfwWaitEvents();
-        } else {
-            glfwPollEvents();
-        }
-        // input handling
         ui::handle_input(window, frame_time.delta_s());
-
         if (ui::paused) {
             continue;
         }
@@ -204,9 +202,6 @@ int main(int argc, char** argv) {
         double total_time = frame_time - init_time;
         // frame_time.delta_s()
         all_done = demo::run(1.f / 60.f, total_time, total_frames);
-#ifndef NO_RENDER
-        glfwSetWindowShouldClose(window, all_done);
-#endif
 
 #ifndef NO_COMM
         comm::run();
@@ -219,9 +214,7 @@ int main(int argc, char** argv) {
 
         ////Physics: iterates over dynamics, which often depend on boundvolumes,
         // and transforms.
-        physics::simulate(
-            1.f / 60.f
-        ); // static_cast<float>(frame_time.delta_s()));
+        physics::simulate(1.f / 60.f); // (frame_time.delta_s()));
 
         ////sync: currently some components have redundant information that
         // needs to be synced every frame.

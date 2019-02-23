@@ -21,18 +21,22 @@ bool edge_down(int key) { return !key_map[key] && prior_key_map[key]; }
 
 void init_callbacks(GLFWwindow* w) {
     glfwSetKeyCallback(w, key_callback);
-#ifndef NO_RENDER
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-#endif
     glfwSetInputMode(w, GLFW_STICKY_KEYS, 1);
     glfwSetCursorPosCallback(w, mouse_callback);
     glfwSetScrollCallback(w, scroll_callback);
 }
 
 void handle_input(GLFWwindow* w, double delta_s) {
+    if (ui::paused) {
+        glfwWaitEvents();
+    } else {
+        glfwPollEvents();
+    }
+
     // global handlers
     // esc -> close application
-    if (key_map[GLFW_KEY_ESCAPE]) {
+    if (ui::edge_up(GLFW_KEY_ESCAPE)) {
         glfwSetWindowShouldClose(w, true);
         return;
     }
