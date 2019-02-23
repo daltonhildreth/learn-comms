@@ -21,6 +21,9 @@ namespace demo {
 template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) { return -pos; }
+static auto make_translate_goal(glm::vec2 t) {
+    return [t](glm::vec2 pos, unsigned) { return pos + t; };
+}
 static glm::vec2 mirror_x_goal(glm::vec2 pos, unsigned) {
     return glm::vec2(-pos.x, pos.y);
 }
@@ -368,6 +371,48 @@ static Scene make_scene(unsigned scn) {
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
+        break;
+    }
+
+    case 18: { // two-door
+        s.num_robos = 65u;
+        s.num_walls = 20u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 60.f;
+        std::array<Regiment, 2> r{
+            center({{-1, 0}, {3, 3}, {1.f, 1.f}, 5, 5}),
+            center({{-1, 0}, {3, -6}, {1.f, 1.f}, 10, 60}),
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = make_translate_goal({-15.f, 0.f});
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned i) {
+            float y = 10.f;
+            switch (i) {
+            case 0: y = +1.0f; break;
+            case 1: y = -1.0f; break;
+            case 2: y = +3.0f; break;
+            case 3: y = -3.0f; break;
+            case 4: y = +6.0f; break;
+            case 5: y = -5.0f; break;
+            case 6: y = +8.0f; break;
+            case 7: y = -8.0f; break;
+            case 8: y = +10.0f; break;
+            case 9: y = -10.0f; break;
+            case 10: y = +12.0f; break;
+            case 11: y = -12.0f; break;
+            case 12: y = +14.0f; break;
+            case 13: y = -14.0f; break;
+            case 14: y = +16.0f; break;
+            case 15: y = -16.0f; break;
+            case 16: y = +18.0f; break;
+            case 17: y = -18.0f; break;
+            case 18: y = +20.0f; break;
+            case 19: y = -20.0f; break;
+            }
+            printf("%f\n", y);
+            return glm::vec2(0.f, y);
+        };
         break;
     }
     }
