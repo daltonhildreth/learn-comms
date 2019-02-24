@@ -52,10 +52,10 @@ void init() {
         dim *= 1; // cellsize
         std_prm = new PRM(
             std::move(cs),
-            root2 * 2.f,
-            0.1f,
-            glm::vec2(1.5f, 1.5f),
-            2,
+            root2 * 4.f,
+            0.01f,
+            glm::vec2(3.f, 3.f),
+            1,
             center_2d - dim,
             center_2d + dim,
             1.f
