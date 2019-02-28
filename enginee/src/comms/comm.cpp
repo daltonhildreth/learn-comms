@@ -7,10 +7,20 @@
 #include <sstream>
 
 namespace comm {
-// one 4x7 matrix I split into four for easy multiplication later
+#define COSINE_REL // NOT AT THE SAME TIME AS NORM_REL (which requires 4x9)
+#define PROX // with either rel, not by itself
+#define SOFTSIGN_GOAL
+
+// one 4x7 or 9 matrix I split into many for easy multiplication later
 glm::mat2x4 M_c; // c input/output
 glm::mat2x4 M_relv; // relative velocity input
+#ifdef NORM_REL
+glm::vec4 M_magv; // magnitude of the relative velocity
+#endif
 glm::mat2x4 M_relp; // relative position input
+#ifdef NORM_REL
+glm::vec4 M_distp; // distance of the relative position of neighbor
+#endif
 glm::vec4 M_dist; // goal distance input
 
 std::string data_dir;
@@ -31,8 +41,17 @@ void init(std::string data_dir_) {
                 M_c[col][row] = std::stof(item);
             else if (col == 2 || col == 3)
                 M_relv[col - 2][row] = std::stof(item);
+#ifdef NORM_REL
+            else if (col == 4)
+                M_magv[row] = std::stof(item);
+            else if (col == 5 || col == 6)
+                M_relp[col - 5][row] = std::stof(item);
+            else if (col == 7)
+                M_distp[row] = std::stof(item);
+#else
             else if (col == 4 || col == 5)
                 M_relp[col - 4][row] = std::stof(item);
+#endif
             else
                 M_dist[row] = std::stof(item);
         }
@@ -76,29 +95,51 @@ void run() {
         // this assumes v_forward/v_right are normalized
         glm::vec2 diff_v = closest_d->vel - d.vel;
         glm::vec2 rel_v(glm::dot(v_right, diff_v), glm::dot(v_front, diff_v));
+
+#if defined(COSINE_REL) || defined(NORM_REL)
         float mag_rv = glm::length(rel_v);
         if (mag_rv > 0) {
-             rel_v /= mag_rv;
+            rel_v /= mag_rv;
         }
+#    ifdef COSINE_REL
         float dot_rv = rel_v.y;
         rel_v = glm::vec2(dot_rv, mag_rv);
+#    endif
+#endif
 
         glm::vec2 diff_p = closest_d->pos - d.pos;
         glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_front, diff_p));
+#if defined(COSINE_REL) || defined(NORM_REL)
         float mag_rp = glm::length(rel_p);
         if (mag_rp > 0) {
             rel_p /= mag_rp;
+#    ifdef PROX
             mag_rp = 1 / mag_rp;
+#    endif
         }
+#    ifdef COSINE_REL
         float dot_rp = rel_p.y;
         rel_p = glm::vec2(dot_rp, mag_rp);
+#    endif
+#endif
 
         Agent& a = *POOL.get<Agent>(e_c);
+        // TODO: compute this where I INTENTIONALLY ignore the 0 block
         c.buf_in(
             M_c * closest_c->c //
             + M_relv * rel_v //
+#ifdef NORM_REL
+            + M_magv * mag_rv
+#endif
             + M_relp * rel_p //
-            + M_dist * a.goal_dist / (1 + a.goal_dist)
+            + M_dist * a.goal_dist
+#ifdef SOFTSIGN_GOAL
+                / (1 + a.goal_dist)
+#endif
+#ifdef NORM_REL
+            + M_distp * mag_rp //
+#endif
+            + M_dist * a.goal_dist
         );
     });
 

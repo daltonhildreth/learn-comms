@@ -100,7 +100,7 @@ void init() {
 #endif
 
         // planners
-        POOL.for_<Agent>([&](Agent& a, Entity&) {
+        POOL.for_<Agent>([&](Agent& a, Entity) {
             a.num_done = 0;
             a.cspace = std_cspace;
             a.prm = std_prm;
@@ -109,6 +109,13 @@ void init() {
 
             GMP::plan_one(a);
             a.goal_dist = glm::length(a.final_goal - a.start);
+
+            a.min_time = 0.f;
+            glm::vec2 last = a.start;
+            for (const auto& p : *a.plan) {
+                a.min_time += glm::length(p - last);
+                last = p;
+            }
         });
     }
 }

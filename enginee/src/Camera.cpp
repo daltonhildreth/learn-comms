@@ -85,7 +85,9 @@ void Camera::apply_proj(Shader& shader) {
     if (_dirty) {
         //_proj = glm::perspective(glm::radians(_fov), _aspect, _near, _far);
         float size = _pos.y / 2.f;
-        _proj = glm::ortho(-size, size, -size, size, _near, _far);
+        _proj = glm::ortho(
+            -size, size, -size / _aspect, size / _aspect, _near, _far
+        );
         _dirty = false;
         shader.use();
         shader.set("proj", _proj);

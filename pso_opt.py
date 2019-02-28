@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import asyncio
 
-M_SHAPE = (4, 7)
+M_SHAPE = (4, 7) # FIXME: Change this TO 4, 9 if NORM_REL is defined
 N_COMM = 2
 
 
@@ -220,6 +220,7 @@ async def hstack(left, right, out):
             )
             await h.wait()
 
+
 async def PSO(data_dir, scene, hypers):
     base_scn = copy(scene)
     baseline = await simulate(
@@ -312,7 +313,7 @@ if __name__ == "__main__":
         "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
-    parser.add_argument("--re_record", action='store_true')
+    parser.add_argument("--re_record", action="store_true")
     parser.add_argument("--n_particles", type=int, default=12)
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)

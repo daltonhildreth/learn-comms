@@ -334,7 +334,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
 }
 
 void draw() {
-    glClearColor(.2f, .2f, .2f, 1.f);
+    glClearColor(.984313f, .98039f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     cam->apply_proj(*mtl);
