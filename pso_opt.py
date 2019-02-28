@@ -264,8 +264,8 @@ async def PSO(data_dir, scene, hypers):
     return "iter", baseline.score, global_min.score, global_min.file
 
 
-async def gen_result(run, scene, minimum):
-    how, base_val, min_val, min_file = minimum
+def gen_result(run, scene, minimum):
+    _, _, _, min_file = minimum
     src = "data/%s/%d_train/iters" % (run, scene.id)
     dst = "data/%s/results/%d_min" % (run, scene.id)
     makedirs(dst)
@@ -273,20 +273,13 @@ async def gen_result(run, scene, minimum):
     copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
     copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
 
+
+async def record_result(run, scene):
     dst = "%s/results/%d_min" % (run, scene.id)
     await record(scene, dst, False)
     await record(scene, dst, True)
     dst = "data/" + dst
     await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
-
-    return (
-        str(scene.id)
-        + ("\tbest at config: " + min_file)
-        + ("\tw/ conf_time: " + str(min_val))
-        + ("\tvs base_conf_time: " + str(base_val))
-        + ("\tby " + how)
-        + "\n"
-    )
 
 
 def agg_result(run, per_result_texts):
@@ -299,7 +292,17 @@ async def run_scenario(run_name, scene, meta_args):
     data_dir = "%s/%d_train/" % (run_name, scene.id)
     makedirs("data/" + data_dir)
     minimum = await PSO(data_dir, scene, meta_args)
-    return await gen_result(run_name, scene, minimum)
+    gen_result(run_name, scene, minimum)
+    await record_result(run_name, scene)
+    how, base_val, min_val, min_file = minimum
+    return (
+        str(scene.id)
+        + ("\tbest at config: " + min_file)
+        + ("\tw/ conf_time: " + str(min_val))
+        + ("\tvs base_conf_time: " + str(base_val))
+        + ("\tby " + how)
+        + "\n"
+    )
 
 
 if __name__ == "__main__":
@@ -309,11 +312,12 @@ if __name__ == "__main__":
         "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
+    parser.add_argument("--re_record", action='store_true')
     parser.add_argument("--n_particles", type=int, default=12)
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)
     parser.add_argument("--w_global", type=float, default=0.2)
-    parser.add_argument("--seed", type=int, default=511607575)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--convergence", type=float, default=1e-9)
     args = parser.parse_args()
@@ -323,28 +327,33 @@ if __name__ == "__main__":
     try:
         scenes = list(chain(range(0, 10 + 1), range(14, 17 + 1)))
         tasks = (
-            run_scenario(
-                args.name,
-                Scene(scene, args.seed),
-                HyperParameters(
-                    args.n_particles,
-                    args.w_inertia,
-                    args.w_local,
-                    args.w_global,
-                    args.iters,
-                    args.convergence,
-                ),
+            (
+                run_scenario(
+                    args.name,
+                    Scene(scene, args.seed),
+                    HyperParameters(
+                        args.n_particles,
+                        args.w_inertia,
+                        args.w_local,
+                        args.w_global,
+                        args.iters,
+                        args.convergence,
+                    ),
+                )
+                if not args.re_record
+                else record_result(args.name, Scene(scene, args.seed))
             )
             for scene in scenes
         )
         optimize = asyncio.gather(*tasks, return_exceptions=True)
         results = event_loop.run_until_complete(optimize)
-        agg_result(args.name, results)
-        for i, outcome in enumerate(optimize.result()):
-            if isinstance(outcome, Exception):
-                print("ERROR", i, scenes[i], outcome)
-            else:
-                print(i, scenes[i], outcome)
+        if not args.re_record:
+            agg_result(args.name, results)
+            for i, outcome in enumerate(optimize.result()):
+                if isinstance(outcome, Exception):
+                    print("ERROR", i, scenes[i], outcome)
+                else:
+                    print(i, scenes[i], outcome)
 
     finally:
         event_loop.close()

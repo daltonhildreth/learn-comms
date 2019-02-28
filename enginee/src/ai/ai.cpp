@@ -106,9 +106,9 @@ void init() {
             a.prm = std_prm;
             a.local_goal = glm::vec2(0, 0);
             a.plan = nullptr;
-            a.goal_dist = 0.f;
 
             GMP::plan_one(a);
+            a.goal_dist = glm::length(a.final_goal - a.start);
         });
     }
 }
@@ -136,7 +136,7 @@ void update_agents() {
     int replanned = 0;
     const int limit = 2;
     POOL.for_<Agent>([&](Agent& a, Entity& e) {
-        a.goal_dist = glm::length2(a.final_goal - a.start);
+        a.goal_dist = glm::length(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
         bool visible_next = false;

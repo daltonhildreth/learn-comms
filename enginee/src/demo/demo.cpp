@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstdio>
 
 using namespace std;
 
@@ -120,9 +121,9 @@ static Scene make_scene(unsigned scn) {
     Scene s;
 
     switch (scn) {
-    case 0: // circle radius 10; 30 agents; 30s
+    case 0: // circle radius 10; 30 agents; 45s
         s.num_robos = 60u;
-        s.max_duration = 30.f;
+        s.max_duration = 45.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
         break;
@@ -239,7 +240,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
-        s.max_duration = 90.f;
+        s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 20}),
             center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 20}),
@@ -255,7 +256,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
-        s.max_duration = 60.f;
+        s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 5}),
             center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 35}),
@@ -391,13 +392,9 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 #endif
     uint16_t bvid = POOL.create<BoundVolume*>(scn.wall_shape_of(pos, 0));
 
-    Seeder s;
-    typedef uniform_real_distribution<float> UFD;
-    UFD tall(1.f, 3.f);
-
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(scn.wall_scale);
-    scale[1][1] = tall(s.gen());
+    scale[1][1] = 1.f;
     scale[3][3] = 1.f;
     t.set_mat(scale);
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
@@ -505,40 +502,23 @@ void init(unsigned scn_i) {
         render::dir_lights.back()->specular(glm::vec3(.1f));
     }
 
-    Seeder s;
-    typedef uniform_real_distribution<float> UFD;
-    UFD y_dist(3, 10);
-    UFD tweak(-.2f, .2f);
-    UFD map(-25.f, 25.f);
-    for (unsigned i = 0; i < 8; ++i) {
-        render::point_lights.push_back(make_unique<PointLight>());
-        render::point_lights.back()->pos(
-            glm::vec3(map(s.gen()), y_dist(s.gen()), map(s.gen()))
-        );
-        render::point_lights.back()->att_to_dist(1000);
-        render::point_lights.back()->ambient(glm::vec3(0.f));
-        render::point_lights.back()->diffuse(
-            glm::vec3(.5f)
-            + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen()))
-        );
-        render::point_lights.back()->specular(glm::vec3(.2f));
-    }
-
     render::cam_dist = scn.cam_dist;
 #endif
 }
 
-float run_avg_time = 0;
-float run_std_time = 0;
-float run_sum_times_sq = 0;
 int total_num_done = 0;
+float run_avg_time = 0;
+float M2 = 0;
+float run_std_time = 0;
 
 static void update_runs(float time) {
     float ftotal = static_cast<float>(++total_num_done);
-    run_avg_time += (time - run_avg_time) / ftotal;
-    run_sum_times_sq += time * time;
-    run_std_time =
-        sqrt(run_sum_times_sq * ftotal - run_avg_time * run_avg_time) / ftotal;
+    float delta = time - run_avg_time;
+    run_avg_time += delta / ftotal;
+    float delta2 = time - run_avg_time;
+    M2 += delta * delta2;
+    run_std_time = sqrt(M2 / ftotal);
+    printf("t:%f u:%f s:%f\n", time, run_avg_time, run_std_time);
 }
 
 bool run(double dt, double time, unsigned frame_count) {
@@ -557,7 +537,7 @@ bool run(double dt, double time, unsigned frame_count) {
         std::clog << "NUM DONE: " << num_done << "\n";
         last_s = time;
     }
-    for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
+    for (int i = total_num_done; i < num_done; ++i) {
         update_runs(fake_time);
     }
     if (fake_time > scn.max_duration) {

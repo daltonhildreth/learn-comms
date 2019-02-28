@@ -11,7 +11,7 @@ namespace comm {
 glm::mat2x4 M_c; // c input/output
 glm::mat2x4 M_relv; // relative velocity input
 glm::mat2x4 M_relp; // relative position input
-glm::vec4 M_dist; // relative distance input
+glm::vec4 M_dist; // goal distance input
 
 std::string data_dir;
 
@@ -27,7 +27,7 @@ void init(std::string data_dir_) {
         std::stringstream sl(line);
         std::string item;
         for (int col = 0; std::getline(sl, item, ' '); ++col) {
-            if (col == 0)
+            if (col == 0 || col == 1)
                 M_c[col][row] = std::stof(item);
             else if (col == 2 || col == 3)
                 M_relv[col - 2][row] = std::stof(item);
@@ -69,21 +69,36 @@ void run() {
             }
         });
 
-        glm::vec2 v_forward = closest_c->facing;
-        glm::vec2 v_right = closest_c->right();
+        // w.r.t. local coordinate frame
+        glm::vec2 v_front = c.facing;
+        glm::vec2 v_right = c.right();
 
         // this assumes v_forward/v_right are normalized
         glm::vec2 diff_v = closest_d->vel - d.vel;
-        glm::vec2 rel_v(glm::dot(v_right, diff_v), glm::dot(v_forward, diff_v));
+        glm::vec2 rel_v(glm::dot(v_right, diff_v), glm::dot(v_front, diff_v));
+        float mag_rv = glm::length(rel_v);
+        if (mag_rv > 0) {
+             rel_v /= mag_rv;
+        }
+        float dot_rv = rel_v.y;
+        rel_v = glm::vec2(dot_rv, mag_rv);
+
         glm::vec2 diff_p = closest_d->pos - d.pos;
-        glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_forward, diff_p));
+        glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_front, diff_p));
+        float mag_rp = glm::length(rel_p);
+        if (mag_rp > 0) {
+            rel_p /= mag_rp;
+            mag_rp = 1 / mag_rp;
+        }
+        float dot_rp = rel_p.y;
+        rel_p = glm::vec2(dot_rp, mag_rp);
 
         Agent& a = *POOL.get<Agent>(e_c);
         c.buf_in(
             M_c * closest_c->c //
             + M_relv * rel_v //
             + M_relp * rel_p //
-            + M_dist * a.goal_dist
+            + M_dist * a.goal_dist / (1 + a.goal_dist)
         );
     });
 

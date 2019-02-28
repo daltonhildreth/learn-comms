@@ -1,0 +1,11 @@
+local is best (using control's ttc times for consistent normalization. I am
+unsure why the TTC times differ...)
+         pd_local = .716095
+     pd_local_dot = .731753
+pd_local_inv_dist = .787615
+           pd_vel = .729656
+       pd_control = .725004
+ pd_local_normrel = .738147
+
+Oddly, though, local is consistently worse than other methods in these
+scenarios, perhaps it got unlucky: 1, 3, 16, 17
