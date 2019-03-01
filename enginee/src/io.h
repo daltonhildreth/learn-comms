@@ -2,10 +2,10 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstddef>
+#include <experimental/optional>
 #include <functional>
 #include <glm/vec2.hpp>
 #include <memory>
-#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 
@@ -19,6 +19,7 @@ struct Option {
     Option(bool* flag, std::string arg_name):
         _flag(flag),
         _arg_name(arg_name) {}
+    virtual ~Option() {}
     virtual void parse(std::string s) = 0;
     virtual bool has_arg() = 0;
     void flag();
@@ -46,6 +47,7 @@ template <typename T, typename F> struct OptionT: public Option {
 
 struct Positional {
     Positional(std::string arg_name): _arg_name(arg_name) {}
+    virtual ~Positional() {}
     virtual void parse(std::string s) = 0;
     bool see();
     bool _seen = false;
@@ -85,7 +87,9 @@ void parse(int argc, char** argv, Options&& opts, Positionals&& poss);
 void parse(int argc, char** argv, Options& opts, Positionals& poss);
 } // namespace cli
 
-std::experimental::optional<const std::string> read_file(const std::string& path);
+std::experimental::optional<const std::string> read_file(
+    const std::string& path
+);
 
 struct Image {
     int width;

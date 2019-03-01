@@ -1,7 +1,7 @@
 #pragma once
 #include <cassert>
-#include <functional>
 #include <experimental/optional>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -17,7 +17,7 @@ public:
     void add_dir_edge(const NodeId& v, const NodeId& u);
     void add_edge(const NodeId& v, const NodeId& u);
 
-    Nodes& edges(const NodeId& v);
+    Nodes* edges(const NodeId& v);
     std::experimental::optional<T> data(const NodeId& v);
 
     void for_vertex(std::function<void(NodeId)> f);
@@ -43,8 +43,11 @@ template <class T> inline NodeId Graph<T>::add_vertex(const T& v) {
 template <class T> inline void Graph<T>::del_vertex(const NodeId& v) {
     _vertices.erase(v);
 
-    for (NodeId adj : edges(v)) {
-        _edges[adj].erase(v);
+    Nodes* e = edges(v);
+    if (e) {
+        for (NodeId adj : *edges(v)) {
+            _edges[adj].erase(v);
+        }
     }
     _edges.erase(v);
 }
@@ -61,15 +64,16 @@ inline void Graph<T>::add_edge(const NodeId& v, const NodeId& u) {
     add_dir_edge(u, v);
 }
 
-template <class T> inline Nodes& Graph<T>::edges(const NodeId& v) {
+template <class T> inline Nodes* Graph<T>::edges(const NodeId& v) {
     if (_edges.count(v)) {
-        return _edges[v];
+        return &(_edges[v]);
     } else {
-        return *(new Nodes());
+        return nullptr;
     } // return _edges.count(v) ? _edges[const_cast<NodeId>(v)] : {};
 }
 
-template <class T> inline std::experimental::optional<T> Graph<T>::data(const NodeId& v) {
+template <class T>
+inline std::experimental::optional<T> Graph<T>::data(const NodeId& v) {
     if (_vertices.count(v)) {
         return _vertices[v];
     } else {

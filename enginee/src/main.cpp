@@ -147,9 +147,11 @@ int main(int argc, char** argv) {
 #endif
     }
 
+    demo::terminate();
 #ifndef NO_COMM
     comm::terminate();
 #endif
+    ai::terminate();
 #ifndef NO_RENDER
     render::terminate();
 #endif

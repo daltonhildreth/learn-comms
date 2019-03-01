@@ -517,4 +517,11 @@ bool run(double dt, double time, unsigned frame_count) {
     }
     return all_done;
 }
+
+void terminate() {
+    POOL.for_<BoundVolume*>([&](BoundVolume*& bv, Entity&) {
+        if (bv)
+            delete bv;
+    });
+}
 } // namespace demo

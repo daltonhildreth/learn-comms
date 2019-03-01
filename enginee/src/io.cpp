@@ -1,10 +1,10 @@
 #include "io.h"
 #include <cstdio>
 #include <cstdlib>
+#include <experimental/optional>
 #include <fstream>
 #include <iostream>
 #include <numeric>
-#include <experimental/optional>
 #include <stb_image.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -60,9 +60,15 @@ static string _usage(string prog, Options& opts, Positionals& poss) {
 }
 
 void parse(int argc, char** argv, Options&& opts, Positionals&& poss) {
-    Options _opts(opts);
-    Positionals _poss(poss);
+    Options _opts(std::move(opts));
+    Positionals _poss(std::move(poss));
     parse(argc, argv, _opts, _poss);
+    for (auto& i : _opts) {
+        delete i.second;
+    }
+    for (auto& i : _poss) {
+        delete i;
+    }
 }
 void parse(int argc, char** argv, Options& opts, Positionals& poss) {
     std::string usage = _usage(argv[0], opts, poss);

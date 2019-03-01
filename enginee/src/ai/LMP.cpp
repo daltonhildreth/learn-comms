@@ -1,6 +1,7 @@
 #include "LMP.h"
 #include "BVH.h"
 #include "Pool.h"
+#include "ai.h"
 #include <util/Seeder.h>
 //#include "debug.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
@@ -70,21 +71,23 @@ float LMP::ttc_(Circ& i, glm::vec2 iv, Rect& j, glm::vec2 jv) {
 glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
     size_t target = static_cast<size_t>(a.num_done);
     if (target < a.plan->size()) {
-        bool at_target = glm::length2(bv._o - (*a.plan)[target]) < .01;
+        bool at_target = glm::length2(bv._o - (*a.plan)[target]) < ai::at_dist;
         if (at_target)
             ++target;
+        size_t next = target + 1;
 
         // local_goal should be the next PRM node
-        a.local_goal = (*a.plan)[target];
-        size_t next = target + 1;
+        if (target < a.plan->size())
+            a.local_goal = (*a.plan)[target];
 
         // do the actual looking ahead for further nodes
         while (true) {
             bool incomplete = next < a.plan->size();
-            bool next_visible = a.cspace->line_of_sight(bv._o, (*a.plan)[next]);
-            if (!(incomplete && next_visible)) {
+            if (!incomplete)
                 break;
-            }
+            bool next_visible = a.cspace->line_of_sight(bv._o, (*a.plan)[next]);
+            if (!next_visible)
+                break;
             ++target;
             a.local_goal = (*a.plan)[target];
             next = target + 1;
@@ -98,9 +101,9 @@ glm::vec2 LMP::lookahead(Agent& a, BoundVolume& bv) {
 
 const double TTC_THRESHOLD = 5.0;
 glm::vec2 LMP::ttc_forces_(double ttc, glm::vec2 dir) {
-    float len = glm::length(dir);
-    if (fabs(len) > 0.000000001)
-        dir /= len;
+    float len = glm::length2(dir);
+    if (len > 0)
+        dir /= sqrt(len);
 
     double t_h = TTC_THRESHOLD; // seconds
     double mag = 0;
@@ -218,11 +221,12 @@ boid_speed;
 */
 
 glm::vec2 LMP::calc_sum_force(
-        Entity* e,
-        BVH* static_bvh,
-        BVH* dynamic_bvh,
-        std::vector<Entity*>, //statics
-        std::vector<Entity*>) {// dynamics) {
+    Entity* e,
+    BVH* static_bvh,
+    BVH* dynamic_bvh,
+    std::vector<Entity*>, // statics
+    std::vector<Entity*> // dynamics) {
+) {
     float speed = 1.0f; // x m/s
     glm::vec2 goal_vel;
     glm::vec2 goal_F(0);
