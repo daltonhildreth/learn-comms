@@ -464,8 +464,8 @@ void init(unsigned scn_i) {
     {
         render::dir_lights.push_back(make_unique<DirLight>());
         render::dir_lights.back()->dir(glm::vec3(0, -1, 0));
-        render::dir_lights.back()->ambient(glm::vec3(0.f));
-        render::dir_lights.back()->diffuse(glm::vec3(1.f));
+        render::dir_lights.back()->ambient(glm::vec3(1.f));
+        render::dir_lights.back()->diffuse(glm::vec3(0.f));
         render::dir_lights.back()->specular(glm::vec3(0.f));
     }
 

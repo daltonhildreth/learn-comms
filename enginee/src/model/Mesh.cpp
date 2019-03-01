@@ -105,7 +105,7 @@ void Mesh::bind_textures() {
 }
 
 void Mesh::unbind_textures() {
-    for (GLuint i = 0; i < textures.size(); ++i) {
+    for (GLuint i = 0; i < 2; ++i) {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);
     }

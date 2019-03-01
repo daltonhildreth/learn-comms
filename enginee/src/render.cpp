@@ -294,7 +294,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
             // LineMesh& l = m;
             m.set_material(mtl.get(), 0, glm::vec3(0, 100, 0));
         } else {
-            m.set_material(mtl.get(), 32);
+            m.set_material(mtl.get(), 0);
         }
         // TODO:
         //.material(Material(
@@ -334,7 +334,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
 }
 
 void draw() {
-    glClearColor(.984313f, .98039f, 1.f, 1.f);
+    glClearColor(.93f, .97f, .9f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     cam->apply_proj(*mtl);
@@ -363,8 +363,7 @@ void draw() {
 
         auto c = POOL.get<CommComp>(e);
         if (c) {
-            glm::vec2 ab = c->c;
-            m._diffuse = comm_vis(glm::vec3(0.5, ab));
+            m._ambient = comm_vis(glm::vec3(.8, c->c));
         }
         // update models _and_ do glDraw; this combination seems to cause
         // issues.

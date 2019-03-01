@@ -100,7 +100,7 @@ void init() {
 #endif
 
         // planners
-        POOL.for_<Agent>([&](Agent& a, Entity) {
+        POOL.for_<Agent>([&](Agent& a, Entity&) {
             a.num_done = 0;
             a.cspace = std_cspace;
             a.prm = std_prm;
