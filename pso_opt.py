@@ -328,7 +328,9 @@ def summarize(run, per_result_table):
                 tested_scenes.add(scene[0])
         tested_scenes = sorted(tested_scenes)
 
-        xcorr_matrix = [[None] * (n_models + 1)] * len(tested_scenes)
+        xcorr_matrix = []
+        for _ in range(len(tested_scenes)):
+            xcorr_matrix += [[None] * (n_models + 1)]
         for col, model in enumerate(per_result_table[1]):
             for row, (s_id, r, b) in enumerate(model):
                 xcorr_scene = tested_scenes.index(s_id)
@@ -336,9 +338,10 @@ def summarize(run, per_result_table):
                 if not xcorr_matrix[xcorr_scene][-1]:
                     xcorr_matrix[xcorr_scene][-1] = b
 
+        print(xcorr_matrix)
         for scene, row in enumerate(xcorr_matrix):
             baseline = xcorr_matrix[scene][-1]
-            line = [str(scene)]
+            line = [str(tested_scenes[scene])]
             for model, result in enumerate(row):
                 if result == None:
                     line += ["--------"] * 2
