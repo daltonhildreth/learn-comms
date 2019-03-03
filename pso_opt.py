@@ -342,7 +342,7 @@ def summarize(run, per_result_table):
         for scene, row in enumerate(xcorr_matrix):
             baseline = xcorr_matrix[scene][-1]
             line = [str(tested_scenes[scene])]
-            for model, result in enumerate(row):
+            for model, result in enumerate(row[:-1]):
                 if result == None:
                     line += ["--------"] * 2
                 else:
