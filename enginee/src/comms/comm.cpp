@@ -27,6 +27,7 @@ std::string data_dir;
 
 void init(std::string data_dir_) {
     comm::data_dir = data_dir_;
+#ifndef NO_COMM
     std::string config_file = comm::data_dir + "/comms.config";
     std::string config_str = *read_file(config_file);
 
@@ -41,21 +42,22 @@ void init(std::string data_dir_) {
                 M_c[col][row] = std::stof(item);
             else if (col == 2 || col == 3)
                 M_relv[col - 2][row] = std::stof(item);
-#ifdef NORM_REL
+#    ifdef NORM_REL
             else if (col == 4)
                 M_magv[row] = std::stof(item);
             else if (col == 5 || col == 6)
                 M_relp[col - 5][row] = std::stof(item);
             else if (col == 7)
                 M_distp[row] = std::stof(item);
-#else
+#    else
             else if (col == 4 || col == 5)
                 M_relp[col - 4][row] = std::stof(item);
-#endif
+#    endif
             else
                 M_dist[row] = std::stof(item);
         }
     }
+#endif
 }
 
 void terminate() {

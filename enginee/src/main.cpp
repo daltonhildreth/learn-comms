@@ -72,9 +72,7 @@ int main(int argc, char** argv) {
     auto size = render::create_context_window(prog, split_offset);
 #endif
     demo::init(scene);
-#ifndef NO_COMM
-    comm::init(data_dir);
-#endif
+    comm::init(data_dir); // we still want to log times even on nocomm_render...
     ai::init();
     physics::init();
 #ifndef NO_RENDER
@@ -148,9 +146,7 @@ int main(int argc, char** argv) {
     }
 
     demo::terminate();
-#ifndef NO_COMM
-    comm::terminate();
-#endif
+    comm::terminate(); // we still want to log times even on nocomm_render...
     ai::terminate();
 #ifndef NO_RENDER
     render::terminate();

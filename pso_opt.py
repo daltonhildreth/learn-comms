@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import asyncio
 
-M_SHAPE = (4, 7) # FIXME: Change this TO 4, 9 if NORM_REL is defined
+M_SHAPE = (4, 7)  # FIXME: Change this TO 4, 9 if NORM_REL is defined
 N_COMM = 2
 
 
@@ -49,11 +49,11 @@ def pretty_mat(np_m):
 
 
 class Particle:
-    def __init__(self, id_, min_config, max_config, scene, data_dir):
+    def __init__(self, id_, min_config, max_config, scene_set, data_dir):
         self.id = id_
         # the baseline always gets 0
         self.iters = 1
-        self.scene = scene
+        self.scene_set = scene_set
         self.data_dir = data_dir
         # intentionally invalid, will be replaced at next minimize with self.pos
         self.local_min = Point()
@@ -118,8 +118,8 @@ class Particle:
         self.vel[r][c] = momentum + local_gravity + global_gravity
 
     async def attempt_move(self):
-        self.pos = await simulate(
-            self.scene,
+        self.pos = await simulate_set(
+            self.scene_set,
             self.vel + self.pos.config,
             self.data_dir,
             "%d_p%d" % (self.iters, self.id),
@@ -139,6 +139,13 @@ class Point:
         self.config = x
         self.score = y
         self.file = file
+
+    def __add__(self, other):
+        assert self.file == other.file
+        return Point(self.config, self.score + other.score, self.file)
+
+    def __radd__(self, sum_score):
+        return Point(self.config, self.score + sum_score, self.file)
 
 
 class Scene:
@@ -165,31 +172,47 @@ class HyperParameters:
         self.max_convergence = max_convergence
 
 
+async def log_exec(prog, args, where):
+    print(" ".join([prog] + args))
+    with open("%s.out" % where, "w") as stdout:
+        with open("%s.err" % where, "w") as stderr:
+            p = await asyncio.create_subprocess_exec(
+                *([prog] + args), stdout=stdout, stderr=stderr
+            )
+            await p.wait()
+
+
+async def simulate_set(scene_set, config, data_dir, save_name):
+    sims = (
+        simulate(scene, config, "%s/s%d_" % (data_dir, scene.id), save_name)
+        for scene in scene_set
+    )
+    batch = await asyncio.gather(*sims, return_exceptions=True)
+    return sum(batch)
+
+
 async def simulate(scene, config, data_dir, save_name):
-    prog = "build/bin/comm_norender"
-    # the 0 does not matter since we are using a _norender build
     data_dir += "iters/"
+    prog = "build/bin/comm_norender"
     args = [scene.id, "--seed", scene.seed, "--data", data_dir]
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
     save = (data_dir, save_name, save_name)
 
+    # write config to data_dir/comms.config and data_dir/save_name/save_name.config
     makedirs("%s/%s/" % (data_dir, save_name))
     sim_config = "%s/comms.config" % data_dir
     with open(sim_config, "w") as config_file:
         write_config(config_file, config)
     copyfile(sim_config, "%s/%s/%s.config" % save)
 
-    print(" ".join([prog] + args))
-    with open("%s/%s/%s.out" % save, "w") as logout_file:
-        with open("%s/%s/%s.err" % save, "w") as logerr_file:
-            sim = await asyncio.create_subprocess_exec(
-                *([prog] + args), stdout=logout_file, stderr=logerr_file
-            )
-            await sim.wait()
+    # run comm_norender with scene and data_dir/comms.config
+    await log_exec(prog, args, "%s/%s/%s" % save)
 
+    # copy exec's result to data_dir/save_name/save_name.result
     sim_result = "%s/comms.result" % data_dir
     copyfile(sim_result, "%s/%s/%s.result" % save)
+
     return Point(config, read_result(sim_result), save_name)
 
 
@@ -199,42 +222,43 @@ async def record(scene, data_dir, with_comm):
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
 
-    print(" ".join([prog] + args))
-    with open("%s/%d.out" % (data_dir, scene.id), "w") as logout_file:
-        with open("%s/%d.err" % (data_dir, scene.id), "w") as logerr_file:
-            sim = await asyncio.create_subprocess_exec(
-                *([prog] + args), stdout=logout_file, stderr=logerr_file
-            )
-            await sim.wait()
+    await log_exec(prog, args, "%s/%d" % (data_dir, scene.id))
 
 
 async def hstack(left, right, out):
-    prog = "ffmpeg"
     args = ["-i", left, "-i", right, "-filter_complex", "hstack", out]
     args = [str(i) for i in args]
-    print(" ".join([prog] + args))
-    with open("%s.out" % out, "w") as of:
-        with open("%s.err" % out, "w") as er:
-            h = await asyncio.create_subprocess_exec(
-                *([prog] + args), stdout=of, stderr=er
-            )
-            await h.wait()
+    await log_exec("ffmpeg", args, out)
 
 
-async def PSO(data_dir, scene, hypers):
-    base_scn = copy(scene)
-    baseline = await simulate(
-        base_scn, np.zeros(shape=M_SHAPE), data_dir, str(0)
+async def validate(run, model_id, scene):
+    src = "%s/t%d_min/" % (run, model_id)
+    dst = src + "v%d" % scene.id
+    makedirs("data/" + dst)
+    copyfile("data/%s/comms.config" % src, "data/%s/comms.config" % dst)
+
+    await record(scene, dst, False)
+    b_result = read_result("data/%s/comms.result" % dst)
+    await record(scene, dst, True)
+    result = read_result("data/%s/comms.result" % dst)
+    dst = "data/" + dst
+    await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
+
+    return (scene.id, result, b_result)
+
+
+async def PSO(data_dir, scene_set, hypers):
+    baseline = await simulate_set(
+        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0)
     )
-    print("baseline ==== ", baseline.score)
-    global_min = Point()
 
     # initialize particles
+    global_min = Point()
     min_config = -np.ones(shape=M_SHAPE)
     max_config = np.ones(shape=M_SHAPE)
     particles = []
     for p in range(hypers.n_particles):
-        p = Particle(p, min_config, max_config, scene, data_dir)
+        p = Particle(p, min_config, max_config, scene_set, data_dir)
         await p.kickstart()
         global_min = p.minimize(global_min)
         with open("data/%s/opt.log" % data_dir, "a") as trace:
@@ -242,8 +266,8 @@ async def PSO(data_dir, scene, hypers):
         particles += [p]
 
     conv_path = data_dir + "/convergence.log"
-    with open("data/" + conv_path, "w") as f_conv:
-        f_conv.write("convergence value per full iteration of all particles\n")
+    with open("data/" + conv_path, "w") as conv_f:
+        conv_f.write("convergence value per full iteration of all particles\n")
 
     for i in range(hypers.max_iters):
         for p in particles:
@@ -265,45 +289,101 @@ async def PSO(data_dir, scene, hypers):
     return "iter", baseline.score, global_min.score, global_min.file
 
 
-def gen_result(run, scene, minimum):
-    _, _, _, min_file = minimum
-    src = "data/%s/%d_train/iters" % (run, scene.id)
-    dst = "data/%s/results/%d_min" % (run, scene.id)
+def cp_min(run, model_id, scene_set, minimum):
+    _, _, _, min_particle = minimum
+    # just take the first scene's as they will all have the same .config for
+    # the same particle
+    src = "data/%s/t%d_train/s%d_iters" % (run, model_id, scene_set[0].id)
+    dst = "data/%s/t%d_min" % (run, model_id)
     makedirs(dst)
-    src = (src, min_file, min_file)
+    src = (src, min_particle, min_particle)
     copyfile("%s/%s/%s.config" % src, "%s/comms.config" % dst)
-    copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_file))
+    copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_particle))
 
 
-async def record_result(run, scene):
-    dst = "%s/results/%d_min" % (run, scene.id)
-    await record(scene, dst, False)
-    await record(scene, dst, True)
-    dst = "data/" + dst
-    await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
+def summarize(run, per_result_table):
+    n_models = len(per_result_table)
+    per_result_table = list(zip(*per_result_table))
+
+    with open("data/%s/best.tsv" % run, "w") as best:
+        header = ["model#", "min config", "comm Jt", "ttc Jt", "exit"]
+        best.write("\t".join(header) + "\n")
+        for row in per_result_table[0]:
+            best.write("\t".join(row) + "\n")
+
+    with open("data/%s/cross_val.tsv" % run, "w") as cross_val:
+        cross_val.write(
+            "\t".join(
+                [
+                    "tests",
+                    *["%d\t%d/b" % (i, i) for i in range(n_models)],
+                    "baseline",
+                ]
+            )
+        )
+        cross_val.write("\n")
+        tested_scenes = set()
+        for model in per_result_table[1]:
+            for scene in model:
+                tested_scenes.add(scene[0])
+        tested_scenes = sorted(tested_scenes)
+
+        xcorr_matrix = [[None] * (n_models + 1)] * len(tested_scenes)
+        for col, model in enumerate(per_result_table[1]):
+            for row, (s_id, r, b) in enumerate(model):
+                xcorr_scene = tested_scenes.index(s_id)
+                xcorr_matrix[xcorr_scene][col] = r
+                if not xcorr_matrix[xcorr_scene][-1]:
+                    xcorr_matrix[xcorr_scene][-1] = b
+
+        for scene, row in enumerate(xcorr_matrix):
+            baseline = xcorr_matrix[scene][-1]
+            line = [str(scene)]
+            for model, result in enumerate(row):
+                if result == None:
+                    line += ["--------"] * 2
+                else:
+                    line += ["%f" % result, "%f" % (result / baseline)]
+            cross_val.write("\t".join(line + ["%f" % baseline]) + "\n")
 
 
-def agg_result(run, per_result_texts):
-    with open("data/%s/results/best.txt" % run, "w") as best:
-        for text in per_result_texts:
-            best.write(text)
-
-
-async def run_scenario(run_name, scene, meta_args):
-    data_dir = "%s/%d_train/" % (run_name, scene.id)
+async def train(run_name, model_id, scene_set, meta_args):
+    data_dir = "%s/t%d_train" % (run_name, model_id)
     makedirs("data/" + data_dir)
-    minimum = await PSO(data_dir, scene, meta_args)
-    gen_result(run_name, scene, minimum)
-    await record_result(run_name, scene)
-    how, base_val, min_val, min_file = minimum
-    return (
-        str(scene.id)
-        + ("\tbest at config: " + min_file)
-        + ("\tw/ conf_time: " + str(min_val))
-        + ("\tvs base_conf_time: " + str(base_val))
-        + ("\tby " + how)
-        + "\n"
+    minimum = await PSO(data_dir, scene_set, meta_args)
+    cp_min(run_name, model_id, scene_set, minimum)
+    how, base_val, min_val, min_particle = minimum
+    return [str(model_id), min_particle, "%f" % min_val, "%f" % base_val, how]
+
+
+async def cross_validate(name, model_id, test_set):
+    tests = (validate(name, model_id, scene) for scene in test_set)
+    cross_val = await asyncio.gather(*tests)
+    with open("data/%s/t%d_min/cross_val.tsv" % (name, model_id), "w") as f:
+        f.write("model_id\t%d\n" % model_id)
+        for i, scene in enumerate(test_set):
+            f.write("\t".join(str(scene.id), *cross_val[i]) + "\n")
+    return cross_val
+
+
+# FIXME: this is a terrible name.
+async def task_batch(args, model_id, batch, test_sets):
+    batch = [Scene(scene, args.seed) for scene in batch]
+    hyper = HyperParameters(
+        args.n_particles,
+        args.w_inertia,
+        args.w_local,
+        args.w_global,
+        args.iters,
+        args.convergence,
     )
+    model = await train(args.name, model_id, batch, hyper)
+    cross_val = await cross_validate(
+        args.name,
+        model_id,
+        (Scene(scene, args.seed) for scene in test_sets[model_id]),
+    )
+    return model, cross_val
 
 
 if __name__ == "__main__":
@@ -313,48 +393,74 @@ if __name__ == "__main__":
         "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
-    parser.add_argument("--re_record", action="store_true")
     parser.add_argument("--n_particles", type=int, default=12)
     parser.add_argument("--w_inertia", type=float, default=0.2)
     parser.add_argument("--w_local", type=float, default=0.2)
     parser.add_argument("--w_global", type=float, default=0.2)
+    # many seeds do not work thanks to PRM unreliability, use 62 for these
+    # scenes when on Dalton's laptop: 0..10, 14..17
+    # and use seed = 0 when on motioncore-umh.cs.umn.edu
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--convergence", type=float, default=1e-9)
+    # not really str, only sometimes. Usually int... : a or int...
+    parser.add_argument("--batch", type=str, nargs="*", action="append")
     args = parser.parse_args()
+
+    all_scenes = list(chain(range(0, 10 + 1), range(14, 17 + 1)))
+
+    train_sets = [i[: i.index(":")] for i in args.batch]
+    train_sets = [[int(i) for i in s] for s in train_sets]
+    test_sets = [i[i.index(":") + 1 :] for i in args.batch]
+    for i, v in enumerate(test_sets):
+        if v[0].lower() == "a" or v[0].lower() == "al" or v[0].lower() == "all":
+            test_sets[i] = all_scenes
+        else:
+            for j, u in enumerate(v):
+                test_sets[i][j] = int(u)
+
+    # Final directory layout of run:
+    # best.tsv
+    # t0_train/
+    #   s0_iters/
+    #     comms.config
+    #     comms.result
+    #     0
+    #     1_p0..
+    #   s9_iters/
+    #   ..log
+    # t0_min/
+    #   *_p*.result
+    #   comms.config
+    #   v0/...
+    #   ...v17/
+    #   cross_val.tsv
+    # t1_train/
+    #   s0_iters/
+    #   ..log
+    # t1_min/
+    # t2_train/
+    #   s9_iters/
+    #   ..log
+    # t2_min/
 
     # For a high-Level of what should be going on, see test_async.py
     event_loop = asyncio.get_event_loop()
     try:
-        scenes = list(chain(range(0, 10 + 1), range(14, 17 + 1)))
-        tasks = (
-            (
-                run_scenario(
-                    args.name,
-                    Scene(scene, args.seed),
-                    HyperParameters(
-                        args.n_particles,
-                        args.w_inertia,
-                        args.w_local,
-                        args.w_global,
-                        args.iters,
-                        args.convergence,
-                    ),
-                )
-                if not args.re_record
-                else record_result(args.name, Scene(scene, args.seed))
-            )
-            for scene in scenes
+        batches = (
+            task_batch(args, i, batch, test_sets)
+            for i, batch in enumerate(train_sets)
         )
-        optimize = asyncio.gather(*tasks, return_exceptions=True)
-        results = event_loop.run_until_complete(optimize)
-        if not args.re_record:
-            agg_result(args.name, results)
-            for i, outcome in enumerate(optimize.result()):
-                if isinstance(outcome, Exception):
-                    print("ERROR", i, scenes[i], outcome)
-                else:
-                    print(i, scenes[i], outcome)
+
+        optimize = asyncio.gather(*batches)  # , return_exceptions=True)
+        minima = event_loop.run_until_complete(optimize)
+        for i, outcome in enumerate(optimize.result()):
+            if isinstance(outcome, Exception):
+                print("ERROR", i, train_sets[i], outcome)
+            else:
+                print(i, train_sets[i], outcome)
+
+        summarize(args.name, minima)
 
     finally:
         event_loop.close()
