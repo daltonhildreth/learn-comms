@@ -2,10 +2,11 @@
 #include <glad.h>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 
 class Shader {
 public:
@@ -33,7 +34,7 @@ private:
     GLint success;
 
     // parse for uniform types?
-    std::optional<GLint> check_uniform(std::string);
+    std::experimental::optional<GLint> check_uniform(std::string);
     bool compile(GLenum type, const std::string& path);
     bool link();
 };

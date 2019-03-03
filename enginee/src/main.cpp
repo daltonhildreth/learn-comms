@@ -24,7 +24,6 @@
 #include "util/debug.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
-#include <any>
 #include <cstdint>
 #include <cstdlib>
 #include <glm/vec2.hpp>
@@ -73,9 +72,7 @@ int main(int argc, char** argv) {
     auto size = render::create_context_window(prog, split_offset);
 #endif
     demo::init(scene);
-#ifndef NO_COMM
-    comm::init(data_dir);
-#endif
+    comm::init(data_dir); // we still want to log times even on nocomm_render...
     ai::init();
     physics::init();
 #ifndef NO_RENDER
@@ -148,9 +145,9 @@ int main(int argc, char** argv) {
 #endif
     }
 
-#ifndef NO_COMM
-    comm::terminate();
-#endif
+    demo::terminate();
+    comm::terminate(); // we still want to log times even on nocomm_render...
+    ai::terminate();
 #ifndef NO_RENDER
     render::terminate();
 #endif

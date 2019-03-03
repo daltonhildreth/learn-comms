@@ -1,10 +1,10 @@
 #include "io.h"
 #include <cstdio>
 #include <cstdlib>
+#include <experimental/optional>
 #include <fstream>
 #include <iostream>
 #include <numeric>
-#include <optional>
 #include <stb_image.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -36,7 +36,7 @@ bool Positional::see() {
 }
 
 Option* opt(bool* flag, nullptr_t, nullptr_t, string) {
-    return opt<int>(flag, (int*)nullptr, nullptr, "");
+    return opt<int>(flag, static_cast<int*>(nullptr), nullptr, "");
 }
 
 static void _error(string message) {
@@ -60,9 +60,15 @@ static string _usage(string prog, Options& opts, Positionals& poss) {
 }
 
 void parse(int argc, char** argv, Options&& opts, Positionals&& poss) {
-    Options _opts(opts);
-    Positionals _poss(poss);
+    Options _opts(std::move(opts));
+    Positionals _poss(std::move(poss));
     parse(argc, argv, _opts, _poss);
+    for (auto& i : _opts) {
+        delete i.second;
+    }
+    for (auto& i : _poss) {
+        delete i;
+    }
 }
 void parse(int argc, char** argv, Options& opts, Positionals& poss) {
     std::string usage = _usage(argv[0], opts, poss);
@@ -120,11 +126,11 @@ void parse(int argc, char** argv, Options& opts, Positionals& poss) {
 }
 } // namespace cli
 
-optional<const string> read_file(const string& path) {
+experimental::optional<const string> read_file(const string& path) {
     ifstream file(path, ios::in | ios::binary);
     if (!file) {
         cerr << "gg! Failed to open file " << path << "\n";
-        return nullopt;
+        return experimental::nullopt;
     }
 
     file.seekg(0, ios::end);
@@ -133,18 +139,18 @@ optional<const string> read_file(const string& path) {
     file.read(&content[0], static_cast<long int>(content.size()));
     if (!file) {
         cerr << "gg! Failed to read entire file " << path << "\n";
-        return nullopt;
+        return experimental::nullopt;
     }
 
     return content;
 }
 
-optional<Image> read_image(const string& path) {
+experimental::optional<Image> read_image(const string& path) {
     Image i;
     i.bytes = stbi_load(path.c_str(), &i.width, &i.height, &i.channels, 0);
     if (i.bytes) {
         return i;
     } else {
-        return nullopt;
+        return experimental::nullopt;
     }
 }

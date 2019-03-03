@@ -13,6 +13,8 @@ struct Agent {
     int num_done;
     std::vector<glm::vec2>* plan;
 
+    float min_time;
+    bool overhead_counted = false;
     float goal_dist;
 
     bool has_plan() {

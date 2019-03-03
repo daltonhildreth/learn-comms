@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <array>
+#include <cstdio>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -120,9 +121,9 @@ static Scene make_scene(unsigned scn) {
     Scene s;
 
     switch (scn) {
-    case 0: // circle radius 10; 30 agents; 30s
+    case 0: // circle radius 10; 30 agents; 45s
         s.num_robos = 60u;
-        s.max_duration = 30.f;
+        s.max_duration = 45.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
         break;
@@ -239,7 +240,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
-        s.max_duration = 90.f;
+        s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 20}),
             center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 20}),
@@ -255,7 +256,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
-        s.max_duration = 60.f;
+        s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 5}),
             center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, 35}),
@@ -360,27 +361,6 @@ static Scene make_scene(unsigned scn) {
 
 Scene scn;
 
-static void create_floor(Entity& e, vector<Texture> texs) {
-#ifdef NO_RENDER
-    UNUSED(texs);
-#endif
-    uint16_t tid = POOL.create<Transform>(Transform(nullptr));
-#ifndef NO_RENDER
-    uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
-#endif
-    auto& t = *POOL.get<Transform>(tid);
-    glm::mat4 scale(50.f);
-    scale[1][1] = 1.f;
-    scale[3][3] = 1.f;
-    t.set_mat(scale);
-    t.set_pos(glm::vec3(0, -1, 0));
-
-    POOL.attach<Transform>(e, tid);
-#ifndef NO_RENDER
-    POOL.attach<Mesh>(e, mid);
-#endif
-}
-
 static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 #ifdef NO_RENDER
     UNUSED(texs);
@@ -391,13 +371,9 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 #endif
     uint16_t bvid = POOL.create<BoundVolume*>(scn.wall_shape_of(pos, 0));
 
-    Seeder s;
-    typedef uniform_real_distribution<float> UFD;
-    UFD tall(1.f, 3.f);
-
     auto& t = *POOL.get<Transform>(tid);
     glm::mat4 scale(scn.wall_scale);
-    scale[1][1] = tall(s.gen());
+    scale[1][1] = 1.f;
     scale[3][3] = 1.f;
     t.set_mat(scale);
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
@@ -469,23 +445,11 @@ void init(unsigned scn_i) {
     // so, normally I'd only want one mesh shared amongst many entities, but the
     // renderer does a for_<Mesh> so I can't do that.
     vector<Texture> robo_tex = {};
-    vector<Texture> floor_tex = {
-#ifndef NO_RENDER
-        {render::create_tex(pwd + "/res/stone.jpg"), Texmap::diffuse}
-#endif
-    };
     vector<Texture> wall_tex = {
 #ifndef NO_RENDER
-        {render::create_tex(pwd + "/res/container2.png"), Texmap::diffuse},
-        {
-            render::create_tex(pwd + "/res/container2_specular.png"),
-            Texmap::specular,
-        }
+        {render::create_tex(pwd + "/res/outline.png"), Texmap::diffuse},
 #endif
     };
-
-    Entity& floors = POOL.spawn_entity();
-    create_floor(floors, floor_tex);
 
     for (unsigned i = 0; i < scn.num_robos; ++i) {
         create_robo(POOL.spawn_entity(), robo_tex, scn.pos_of(i));
@@ -500,76 +464,64 @@ void init(unsigned scn_i) {
     {
         render::dir_lights.push_back(make_unique<DirLight>());
         render::dir_lights.back()->dir(glm::vec3(0, -1, 0));
-        render::dir_lights.back()->ambient(glm::vec3(.1f));
-        render::dir_lights.back()->diffuse(glm::vec3(.35f));
-        render::dir_lights.back()->specular(glm::vec3(.1f));
-    }
-
-    Seeder s;
-    typedef uniform_real_distribution<float> UFD;
-    UFD y_dist(3, 10);
-    UFD tweak(-.2f, .2f);
-    UFD map(-25.f, 25.f);
-    for (unsigned i = 0; i < 8; ++i) {
-        render::point_lights.push_back(make_unique<PointLight>());
-        render::point_lights.back()->pos(
-            glm::vec3(map(s.gen()), y_dist(s.gen()), map(s.gen()))
-        );
-        render::point_lights.back()->att_to_dist(1000);
-        render::point_lights.back()->ambient(glm::vec3(0.f));
-        render::point_lights.back()->diffuse(
-            glm::vec3(.5f)
-            + glm::vec3(tweak(s.gen()), tweak(s.gen()), tweak(s.gen()))
-        );
-        render::point_lights.back()->specular(glm::vec3(.2f));
+        render::dir_lights.back()->ambient(glm::vec3(1.f));
+        render::dir_lights.back()->diffuse(glm::vec3(0.f));
+        render::dir_lights.back()->specular(glm::vec3(0.f));
     }
 
     render::cam_dist = scn.cam_dist;
 #endif
 }
 
-float run_avg_time = 0;
-float run_std_time = 0;
-float run_sum_times_sq = 0;
 int total_num_done = 0;
+float run_avg_time = 0;
+float M2 = 0;
+float run_std_time = 0;
 
-static void update_runs(float time) {
+static void update_runs(float overhead) {
     float ftotal = static_cast<float>(++total_num_done);
-    run_avg_time += (time - run_avg_time) / ftotal;
-    run_sum_times_sq += time * time;
-    run_std_time =
-        sqrt(run_sum_times_sq * ftotal - run_avg_time * run_avg_time) / ftotal;
+    float delta = overhead - run_avg_time;
+    run_avg_time += delta / ftotal;
+    float delta2 = overhead - run_avg_time;
+    M2 += delta * delta2;
+    run_std_time = sqrt(M2 / ftotal);
+    printf("t:%f u:%f s:%f\n", overhead, run_avg_time, run_std_time);
 }
 
 bool run(double dt, double time, unsigned frame_count) {
     bool all_done = true;
-    int num_done = 0;
     static double last_s = 0;
     float fake_time = static_cast<float>(dt) * static_cast<float>(frame_count);
     POOL.for_<Agent>([&](Agent& ai, Entity&) {
         if (!ai.done()) {
             all_done = false;
-        } else {
-            ++num_done;
+        } else if (!ai.overhead_counted) {
+            update_runs(fake_time - ai.min_time);
+            ai.overhead_counted = true;
         }
     });
     if (time - last_s >= 1) {
-        std::clog << "NUM DONE: " << num_done << "\n";
+        std::clog << "NUM DONE: " << total_num_done << "\n";
         last_s = time;
     }
-    for (int i = total_num_done; i < num_done; ++i, ++total_num_done) {
-        update_runs(fake_time);
-    }
+
     if (fake_time > scn.max_duration) {
         POOL.for_<Agent>([&](Agent& ai, Entity&) {
             if (!ai.done()) {
-                float finish_time =
-                    2 * glm::length(ai.final_goal - ai.start) + fake_time;
+                float finish_time = 2 * glm::length(ai.final_goal - ai.start)
+                    + fake_time - ai.min_time;
                 update_runs(finish_time);
             }
         });
         all_done = true;
     }
     return all_done;
+}
+
+void terminate() {
+    POOL.for_<BoundVolume*>([&](BoundVolume*& bv, Entity&) {
+        if (bv)
+            delete bv;
+    });
 }
 } // namespace demo

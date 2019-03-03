@@ -39,13 +39,13 @@ void simulate(float dt) {
         d.vel_backhalf = d.vel_forehalf;
         d.acc = d.force / d.mass;
         d.vel_forehalf = d.vel_backhalf + dt * d.acc;
-        d.vel = d.vel_backhalf + dt / 2.f * d.acc;
-        d.pos += d.vel_forehalf * dt;
-
+        // force velocity to max out at 1m/s
         if (glm::length2(d.vel_forehalf) > 1.f) {
             d.vel_forehalf = glm::normalize(d.vel_forehalf);
             d.acc = glm::vec3(0);
         }
+        d.vel = d.vel_forehalf / 2.f + d.vel_backhalf / 2.f;
+        d.pos += d.vel_forehalf * dt;
         d.force = glm::vec3(0);
 
         // detect collisions; no momentum
