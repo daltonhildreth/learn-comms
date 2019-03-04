@@ -7,7 +7,7 @@
 #include <sstream>
 
 namespace comm {
-#define COSINE_REL // NOT AT THE SAME TIME AS NORM_REL (which requires 4x9)
+#define COSINE_REL // NOT AT THE SAME TIME AS NORM_REL (which requires a 4x9 M)
 #define PROX // with either rel, not by itself
 #define SOFTSIGN_GOAL
 
@@ -70,8 +70,11 @@ void terminate() {
 
 void run() {
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
-        Dynamics* closest_d = nullptr;
-        CommComp* closest_c = nullptr;
+        // if, for some reason, a nearest neighbor is not found, treat them as
+        // silent, not moving, and not distant.
+        glm::vec2 closest_pos{0, 0};
+        glm::vec2 closest_vel{0, 0};
+        glm::vec2 closest_c{0, 0};
         Dynamics& d = *POOL.get<Dynamics>(e_c);
         float dist2 = std::numeric_limits<float>::max();
 
@@ -85,8 +88,9 @@ void run() {
             float dot = glm::dot(diff, diff);
             if (dot < dist2) {
                 dist2 = dot;
-                closest_d = d_other;
-                closest_c = &o_c;
+                closest_pos = d_other->pos;
+                closest_vel = d_other->vel;
+                closest_c = o_c.c;
             }
         });
 
@@ -95,7 +99,7 @@ void run() {
         glm::vec2 v_right = c.right();
 
         // this assumes v_forward/v_right are normalized
-        glm::vec2 diff_v = closest_d->vel - d.vel;
+        glm::vec2 diff_v = closest_vel - glm::vec2(d.vel.x, d.vel.z);
         glm::vec2 rel_v(glm::dot(v_right, diff_v), glm::dot(v_front, diff_v));
 
 #if defined(COSINE_REL) || defined(NORM_REL)
@@ -109,7 +113,7 @@ void run() {
 #    endif
 #endif
 
-        glm::vec2 diff_p = closest_d->pos - d.pos;
+        glm::vec2 diff_p = closest_pos - glm::vec2(d.pos.x, d.pos.z);
         glm::vec2 rel_p(glm::dot(v_right, diff_p), glm::dot(v_front, diff_p));
 #if defined(COSINE_REL) || defined(NORM_REL)
         float mag_rp = glm::length(rel_p);
@@ -128,7 +132,7 @@ void run() {
         Agent& a = *POOL.get<Agent>(e_c);
         // TODO: compute this where I INTENTIONALLY ignore the 0 block
         c.buf_in(
-            M_c * closest_c->c //
+            M_c * closest_c //
             + M_relv * rel_v //
 #ifdef NORM_REL
             + M_magv * mag_rv
@@ -141,7 +145,6 @@ void run() {
 #ifdef NORM_REL
             + M_distp * mag_rp //
 #endif
-            + M_dist * a.goal_dist
         );
     });
 
