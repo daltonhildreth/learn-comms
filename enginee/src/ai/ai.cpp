@@ -11,6 +11,7 @@ Cspace2d* std_cspace;
 PRM* std_prm;
 BVH* static_bvh;
 BVH* dynamic_bvh;
+const float at_dist = 1.f;
 
 static void rebuild_sbvh(std::vector<Entity*> statics) {
     static_bvh = new BVH(statics);
@@ -108,9 +109,19 @@ void init() {
             a.prm = std_prm;
             a.local_goal = glm::vec2(0, 0);
             a.plan = nullptr;
-            a.goal_dist = 0.f;
 
             GMP::plan_one(a);
+            a.goal_dist = glm::length(a.final_goal - a.start);
+
+            // min_time shouldn't include the last unit that isn't timed. The
+            // min time isn't as large as it seems. Any other negative overheads
+            // would be due to shortcutting the straight paths of A*
+            a.min_time = -at_dist;
+            glm::vec2 last = a.start;
+            for (const auto& p : *a.plan) {
+                a.min_time += glm::length(p - last);
+                last = p;
+            }
         });
     }
 }
@@ -138,11 +149,11 @@ void update_agents() {
     int replanned = 0;
     const int limit = 2;
     POOL.for_<Agent>([&](Agent& a, Entity& e) {
-        a.goal_dist = glm::length2(a.final_goal - a.start);
+        a.goal_dist = glm::length(a.final_goal - a.start);
         BoundVolume* bv = *POOL.get<BoundVolume*>(e);
         size_t next = static_cast<size_t>(a.num_done);
         bool visible_next = false;
-        if (a.has_plan()) {
+        if (a.has_plan() && next < a.plan->size()) {
             visible_next = a.cspace->line_of_sight(bv->_o, (*a.plan)[next]);
         }
         a.lost_frames = visible_next ? 0 : a.lost_frames + 1;
@@ -158,5 +169,17 @@ void update_agents() {
             LMP::calc_sum_force(&e, static_bvh, dynamic_bvh, statics, dynamics);
         POOL.get<Dynamics>(e)->force += glm::vec3(f2d.x, 0, f2d.y);
     });
+}
+
+void terminate() {
+    POOL.for_<Agent>([](Agent& a, Entity&) {
+        if (a.plan) {
+            delete a.plan;
+            a.plan = nullptr;
+        }
+    });
+    delete static_bvh;
+    delete dynamic_bvh;
+    delete std_prm;
 }
 } // namespace ai

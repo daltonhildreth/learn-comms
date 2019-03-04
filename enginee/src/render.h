@@ -15,6 +15,9 @@ class Camera;
 
 namespace render {
 extern float cam_dist;
+extern GLFWwindow* window;
+// practically static: DO NOT CHANGE AFTER INIT
+extern bool is_record;
 // currently going to do one shader for all meshes in the pool,
 // just because I don't have a better way right this moment that I've made.
 // There are many ways I have thought of though.
@@ -25,9 +28,12 @@ extern std::vector<std::unique_ptr<SpotLight>> spot_lights;
 extern std::unique_ptr<Camera> cam;
 
 GLuint create_tex(std::string path);
+// TODO: combine create and init
+glm::vec<2, int> create_context_window(std::string prog, unsigned offset);
 // TODO: remove init in favor of SceneGraphs
-void init(glm::vec<2, int>);
+void init(glm::vec<2, int>, std::string);
 void draw();
+void terminate();
 
 void framebuffer_resize(GLFWwindow* w, int width, int height);
 // input handler

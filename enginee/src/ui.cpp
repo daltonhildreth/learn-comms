@@ -2,12 +2,7 @@
 #include <iostream>
 
 namespace ui {
-bool paused =
-#ifndef NO_RENDER
-    true;
-#else
-    false;
-#endif
+bool paused = false;
 float cursor_sensitivity = 1.f;
 glm::vec2 d_cursor_pos = glm::vec2(0.f, 0.f);
 glm::vec2 cursor_pos = glm::vec2(0.f, 0.f);

@@ -50,7 +50,10 @@ PointPath* find_path_astar(
         }
 
         // try each adjacency
-        for (NodeId adj : roadmap->edges(cur)) {
+        Nodes* edges = roadmap->edges(cur);
+        if (!edges)
+            continue;
+        for (NodeId adj : *roadmap->edges(cur)) {
             glm::vec2 adj_v = *roadmap->data(adj);
             // new potential path = path to here + edge-cost to adjacent
             float g_alt = g_cost[cur] + glm::distance(adj_v, cur_v);
@@ -96,6 +99,8 @@ void plan_one(Agent& a) {
     connect_to_all(rm, goal, a.cspace);
 
     // PATH PLANNING METHOD
+    if (a.plan)
+        delete a.plan;
     a.plan = find_path_astar(1.f, rm, start, goal);
 
     rm->del_vertex(start);

@@ -88,16 +88,16 @@ bool Shader::link() {
     return success;
 }
 
-std::optional<GLint> Shader::check_uniform(string uniform) {
+std::experimental::optional<GLint> Shader::check_uniform(string uniform) {
     if (uniform.substr(3) == "gl_") {
-        cerr //
-            << "gg! Shaders cannot use gl_ before uniforms " << uniform << "\n";
-        return std::nullopt;
+        cerr << //
+            "gg! Shaders cannot use gl_ before uniforms " << uniform << "\n";
+        return std::experimental::nullopt;
     }
     GLint loc = glGetUniformLocation(program, uniform.c_str());
     if (loc == -1) {
         cerr << "gg! Shaders do not contain uniform " << uniform << "\n";
-        return std::nullopt;
+        return std::experimental::nullopt;
     }
     return loc;
 }

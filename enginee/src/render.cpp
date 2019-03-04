@@ -24,6 +24,14 @@ using namespace std;
 #include "demo/demo.h"
 namespace render {
 float cam_dist = 1.f;
+GLFWwindow* window;
+
+bool is_record = false;
+static GLuint fbo;
+static GLuint rbo[2];
+static int* video_buf;
+static FILE* ffmpeg;
+
 unique_ptr<Shader> mtl;
 vector<unique_ptr<DirLight>> dir_lights;
 vector<unique_ptr<PointLight>> point_lights;
@@ -75,7 +83,6 @@ GLuint create_tex(std::string path) {
     return tex;
 }
 
-#ifndef NO_RENDER
 static glm::vec3 uv2rgb(glm::vec3 Luv) {
     glm::vec3 rgb = {
         // Here the 0.5 in each equation is just the desired
@@ -89,7 +96,6 @@ static glm::vec3 uv2rgb(glm::vec3 Luv) {
     // Clamp the results to 0 to 1
     return glm::max(glm::vec3(0.f), glm::min(glm::vec3(1.f), rgb));
 }
-#endif
 
 static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     // https://www.easyrgb.com/en/math.php
@@ -97,9 +103,9 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     Lab[1] *= 128.f;
     Lab[2] *= 128.f;
     glm::vec3 XYZ;
-    XYZ[0] = (Lab[0] + 16.) / 116.;
-    XYZ[1] = Lab[1] / 500. + XYZ[0];
-    XYZ[2] = XYZ[0] - Lab[2] / 200.;
+    XYZ[0] = static_cast<float>((Lab[0] + 16.) / 116.);
+    XYZ[1] = static_cast<float>(Lab[1] / 500. + XYZ[0]);
+    XYZ[2] = static_cast<float>(XYZ[0] - Lab[2] / 200.);
 
     auto maybe_cube = [](double a) {
         double cube = a * a * a;
@@ -109,9 +115,9 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         return (a - 16. / 116.) / 7.787;
     };
     // D65 , 2 degree standard illuminant (Daylight, sRGB, Adobe-RGB)
-    XYZ[0] = 0.95047 * maybe_cube(XYZ[0]);
-    XYZ[1] = 1.00000 * maybe_cube(XYZ[1]);
-    XYZ[2] = 1.08883 * maybe_cube(XYZ[2]);
+    XYZ[0] = static_cast<float>(0.95047 * maybe_cube(XYZ[0]));
+    XYZ[1] = static_cast<float>(1.00000 * maybe_cube(XYZ[1]));
+    XYZ[2] = static_cast<float>(1.08883 * maybe_cube(XYZ[2]));
 
     glm::mat3 XYZ2rgb = {
         {3.2406, -1.5372, -0.4986},
@@ -128,13 +134,12 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
         }
         return pow(max(0., min(1., a)), 2.2);
     };
-    rgb[0] = finish_rgb(rgb[0]);
-    rgb[1] = finish_rgb(rgb[1]);
-    rgb[2] = finish_rgb(rgb[2]);
+    rgb[0] = static_cast<float>(finish_rgb(rgb[0]));
+    rgb[1] = static_cast<float>(finish_rgb(rgb[1]));
+    rgb[2] = static_cast<float>(finish_rgb(rgb[2]));
     return rgb;
 }
 
-#ifndef NO_RENDER
 static glm::vec3 Lx_2rg_(glm::vec3 Lx_) {
     float x = Lx_[1];
     return x < 0 ? glm::vec3(-x, 0, 0) : glm::vec3(0, x, 0);
@@ -144,9 +149,132 @@ static glm::vec3 L_y2_gb(glm::vec3 L_y) {
     float y = L_y[2];
     return y < 0 ? glm::vec3(0, 0, -y) : glm::vec3(0, y, 0);
 }
-#endif
 
-void init(glm::vec<2, int> dims) {
+static void _glfw_error(int err, const char* msg) {
+    cerr << "gg! GLFW error: #" << err << " " << msg << "\n";
+}
+
+static void _monitor_connect(GLFWmonitor* m, int event) {
+    if (event == GLFW_CONNECTED) {
+        clog << "gg. Monitor " << glfwGetMonitorName(m) << " connected.\n";
+    } else if (event == GLFW_DISCONNECTED) {
+        clog << "gg. Monitor " << glfwGetMonitorName(m) << " disconnected.\n";
+    }
+}
+
+glm::vec<2, int> create_context_window(
+    std::string prog,
+    unsigned split_offset
+) {
+    // Setup pre-init glfw
+    glfwSetErrorCallback(_glfw_error);
+
+    // initialize glfw, output version.
+    if (!glfwInit()) {
+        cerr << "gg! Failed to init glfw; exiting.\n";
+        exit(EXIT_FAILURE);
+    } else {
+        clog //
+            << "gg. GLFW compiled as v" //
+            << GLFW_VERSION_MAJOR << "." //
+            << GLFW_VERSION_MINOR << "." //
+            << GLFW_VERSION_REVISION << "\n";
+        int major, minor, revision;
+        glfwGetVersion(&major, &minor, &revision);
+        clog //
+            << "gg. GLFW running as v" //
+            << major << "." << minor << "." << revision << "\n" //
+            << "gg. GLFW version string " << glfwGetVersionString() << "\n";
+    }
+
+    // obtain primary monitor
+    int num_monitor;
+    GLFWmonitor** monitors = glfwGetMonitors(&num_monitor);
+    if (!monitors) {
+        cerr << "gg! No monitor found.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    } else {
+        clog << "gg. Found " << num_monitor << " monitors. Using primary.\n";
+    }
+    // primary monitor is 0; so, mode0 is the primary video mode.
+    const GLFWvidmode* mode0 = glfwGetVideoMode(monitors[0]);
+    glfwSetMonitorCallback(_monitor_connect);
+
+    // initialize window and OpenGL context
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for Mac OSX to work
+    if (is_record) {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    }
+    glm::vec<2, int> size{min(640, mode0->width), min(480, mode0->height)};
+    window = glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
+    if (!window) {
+        cerr << "gg! Failed to create window context.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+
+    glfwSetWindowPos(
+        window,
+        mode0->width / 2 - static_cast<int>(split_offset) * size.x,
+        mode0->height / 2 - size.y / 2
+    );
+    glfwSetFramebufferSizeCallback(window, render::framebuffer_resize);
+    glfwMakeContextCurrent(window);
+
+    // load glad in window context
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+        cerr << "gg! Failed to load OpenGL context.\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+
+    glViewport(0, 0, size.x, size.y);
+    return size;
+}
+
+void init(glm::vec<2, int> dims, std::string data_dir) {
+    if (is_record) {
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glGenRenderbuffers(2, rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo[0]);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, dims.x, dims.y);
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo[0]
+        );
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo[1]);
+        glRenderbufferStorage(
+            GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, dims.x, dims.y
+        );
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo[1]
+        );
+
+        if ( //
+            glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
+        ) {
+            printf("Uh, oh! Framebuffer is incomplete!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // pipe frames to ffmpeg
+        std::string cmd = "ffmpeg -r 60 -f rawvideo -pix_fmt rgba"
+            " -s " + std::to_string(dims.x) + "x" + std::to_string(dims.y)
+            + " -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 17"
+            " -vf vflip " + data_dir + "/"
+#ifndef NO_COMM
+            + "comm.mp4";
+#else
+            + "ttc.mp4";
+#endif
+        ffmpeg = popen(cmd.c_str(), "w");
+        video_buf = new int[dims.x * dims.y];
+    }
+
     ui::add_handler(input_key);
     ui::add_handler(input_cursor);
     ui::add_handler(input_scroll);
@@ -166,7 +294,7 @@ void init(glm::vec<2, int> dims) {
             // LineMesh& l = m;
             m.set_material(mtl.get(), 0, glm::vec3(0, 100, 0));
         } else {
-            m.set_material(mtl.get(), 32);
+            m.set_material(mtl.get(), 0);
         }
         // TODO:
         //.material(Material(
@@ -206,7 +334,7 @@ void init(glm::vec<2, int> dims) {
 }
 
 void draw() {
-    glClearColor(.2f, .2f, .2f, 1.f);
+    glClearColor(253.f / 255.f, 246.f / 255.f, 227.f / 255.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     cam->apply_proj(*mtl);
@@ -222,6 +350,9 @@ void draw() {
     // TODO: (pre?)rendering by scene graph?
     // TODO: dynamic lighting
 
+    if (is_record) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    }
     POOL.for_<Mesh>([&](Mesh& m, Entity& e) {
         auto t = POOL.get<Transform>(e);
         if (t) {
@@ -232,8 +363,7 @@ void draw() {
 
         auto c = POOL.get<CommComp>(e);
         if (c) {
-            glm::vec2 ab = c->c;
-            m._diffuse = comm_vis(glm::vec3(0.5, ab));
+            m._ambient = comm_vis(glm::vec3(.8, c->c));
         }
         // update models _and_ do glDraw; this combination seems to cause
         // issues.
@@ -244,6 +374,25 @@ void draw() {
             m.draw();
         }
     });
+
+    if (is_record) {
+        // glNamedFramebufferReadBuffer(fbo[back], GL_COLOR_ATTACHMENT0);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glReadPixels(0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, &video_buf[0]);
+        fwrite(video_buf, sizeof(int) * 640 * 480, 1, ffmpeg);
+    }
+    // double buffer
+    glfwSwapBuffers(window);
+}
+
+void terminate() {
+    if (is_record) {
+        delete[] video_buf;
+        pclose(ffmpeg);
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteRenderbuffers(2, rbo);
+    }
+    glfwTerminate();
 }
 
 // custom handler for input
@@ -281,7 +430,6 @@ void input_key(GLFWwindow* w, double ddt) {
     glm::vec3 up_new = cam->up() + roll * cam->right();
     cam->set_rot(cam->look_dir(), up_new);
 
-#ifndef NO_RENDER
     if (ui::edge_up(GLFW_KEY_X)) {
         if (glfwGetInputMode(w, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
             glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -298,9 +446,6 @@ void input_key(GLFWwindow* w, double ddt) {
     } else if (ui::edge_up(GLFW_KEY_3)) {
         comm_vis = L_y2_gb;
     }
-#else
-    UNUSED(w);
-#endif
 }
 
 void input_cursor(GLFWwindow*, double) { // ddt) {
