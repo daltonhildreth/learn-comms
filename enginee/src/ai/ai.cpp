@@ -53,16 +53,17 @@ void init() {
         dim *= 1; // cellsize
         std_prm = new PRM(
             std::move(cs),
-            root2 * 4.f,
-            0.01f,
-            glm::vec2(3.f, 3.f),
-            1,
+            5.f * root2,
+            0.f,
+            glm::vec2(2.5f, 2.5f),
+            0,
             center_2d - dim,
             center_2d + dim,
             1.f
         ); // 1.f
 
 #ifdef PRM_DEBUG
+#    ifndef NO_RENDER
         auto& rm = std_prm->_roadmap;
         std::vector<Vertex> endpoints(rm->vertex_num());
         std::vector<GLuint> lines(2 * rm->edge_num());
@@ -100,6 +101,7 @@ void init() {
             uint16_t mid = POOL.create<Mesh>(LineMesh(endpoints, lines));
             POOL.attach<Mesh>(debug_map, mid);
         }
+#    endif
 #endif
 
         // planners
