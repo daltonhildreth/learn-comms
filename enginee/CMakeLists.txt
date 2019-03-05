@@ -35,7 +35,7 @@ add_definitions(
     -DPROJECT_SRC_DIR="${PROJECT_SOURCE_DIR}/enginee/"
 )
 
-add_definitions(-DPRM_DEBUG)
+#add_definitions(-DPRM_DEBUG)
 
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
     add_definitions(-DDEBUG)

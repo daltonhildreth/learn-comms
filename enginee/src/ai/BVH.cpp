@@ -170,17 +170,11 @@ glm::vec2 BVH::closest_aabb_point_(glm::vec2 o_, Rect* r) {
     // will not change o if inside aabb, so we must clamp further to the edges
     if (closest == o_) {
         glm::vec2 o_in_r = o_ - r->_o;
-        float* major_axis = &closest.y;
-        float major_o = r->_o.y;
-        float major_axis_in_r = o_in_r.y;
-        float dim = r->_h;
         if (std::abs(o_in_r.x) > std::abs(o_in_r.y)) {
-            major_axis = &closest.x;
-            major_o = r->_o.x;
-            major_axis_in_r = o_in_r.x;
-            dim = r->_w;
+            closest.x = r->_o.x + (o_in_r.x > 0 ? +r->_w : -r->_w) / 2;
+        } else {
+            closest.y = r->_o.y + (o_in_r.y > 0 ? +r->_h : -r->_h) / 2;
         }
-        *major_axis = major_o + (major_axis_in_r > 0 ? +dim : -dim) / 2;
     }
 
     return closest;

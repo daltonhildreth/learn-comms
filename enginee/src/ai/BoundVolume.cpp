@@ -90,7 +90,7 @@ bool Circ::line_of_sight(glm::vec2 start, glm::vec2 end) {
         return true; // MISS, has LoS
 
     // hits circ, compute smallest t
-    float t = (-b - sqrt(discrim)) / a;
+    float t = (-b - sqrtf(discrim)) / a;
 
     if (t * t > a) // end of segment is before circ
         return true; // MISS, has LoS
@@ -115,7 +115,7 @@ float Circ::intersect(glm::vec2 o, glm::vec2 d) {
         return std::numeric_limits<float>::max(); // MISS
 
     // hits circ, compute smallest t
-    float t = (-b - sqrt(discrim)) / a;
+    float t = (-b - sqrtf(discrim)) / a;
 
     if (t < 0.f) // inside sphere
         return 0.f;
@@ -137,11 +137,11 @@ bool Rect::line_of_sight(glm::vec2 a, glm::vec2 b) {
     glm::vec2 d = b - a; // halflength vector
 
     // Separating axes of world coordinates
-    float adx = fabs(d.x);
-    if (fabs(m.x) > e.x + adx)
+    float adx = static_cast<float>(fabs(d.x));
+    if (static_cast<float>(fabs(m.x)) > e.x + adx)
         return true; // MISS, has LoS
-    float ady = fabs(d.y);
-    if (fabs(m.y) > e.y + ady)
+    float ady = static_cast<float>(fabs(d.y));
+    if (static_cast<float>(fabs(m.y)) > e.y + ady)
         return true; // MISS, has Los
 
     // add an epsilon to deal with (nearly) parllel segments to axes
@@ -149,7 +149,7 @@ bool Rect::line_of_sight(glm::vec2 a, glm::vec2 b) {
     ady += 0.0000001f;
 
     // try edge-edge cross-products of separating axes
-    if (fabs(m.x * d.y - m.y * d.x) > e.x * ady + e.y * adx)
+    if (static_cast<float>(fabs(m.x * d.y - m.y * d.x)) > e.x * ady + e.y * adx)
         return true; // MISS, has LoS
 
     return false; // no separating axis, HIT, no LoS

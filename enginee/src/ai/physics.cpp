@@ -24,7 +24,9 @@ static void push_away(Dynamics& d, glm::vec2 collision) {
     glm::vec3 away(collision.x, 0, collision.y);
 
     // move object out of collision with some buffer.
-    d.pos += away + 0.001f * glm::normalize(away);
+    if (glm::dot(away, away) > 0.f) {
+        d.pos += away + 0.001f * glm::normalize(away);
+    }
 
     // stop motion into object
     glm::vec3 vel_proj = away * glm::dot(away, d.vel_forehalf);
@@ -54,6 +56,7 @@ void simulate(float dt) {
             (*bv)->_o = glm::vec2(d.pos.x, d.pos.z);
 
             auto in_dyn = ai::dynamic_bvh->query(*bv);
+
             auto in_st = ai::static_bvh->query(*bv);
 
             // collision! undo the motion at the collision!
