@@ -22,6 +22,9 @@ namespace demo {
 template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) { return -pos; }
+static auto make_translate_goal(glm::vec2 t) {
+    return [t](glm::vec2 pos, unsigned) { return pos + t; };
+}
 static glm::vec2 mirror_x_goal(glm::vec2 pos, unsigned) {
     return glm::vec2(-pos.x, pos.y);
 }
@@ -104,6 +107,18 @@ static auto make_hole_wall(float gap, float scale) {
         return glm::vec2(x, y);
     };
 }
+static auto make_hall(float gap, float scale) {
+    return [gap, scale](unsigned i) {
+        float side = ((i % 2) == 0 ? 1.f : -1.f);
+        float width = static_cast<float>((i + 2 % 4) / 4);
+        float xside = (i % 4 < 2 ? 1.f : -1.f);
+        float x = xside * scale * width;
+        float y = side * .5f * (gap + scale);
+        return glm::vec2(x, y);
+    };
+}
+
+// TODO: compose/union/intersect
 
 struct Scene {
     unsigned num_robos;
@@ -268,41 +283,97 @@ static Scene make_scene(unsigned scn) {
         break;
     }
 
-    case 11: // escaping room
-        assert(false);
-        //        s.num_robos = 40u;
-        //        s.num_walls = 120u;
-        //        s.wall_scale = 2.0f;
-        //        s.max_duration = ;
-        //        s.pos_of = ;
-        //        s.goal_of = ;
-        //        s.wall_shape_of = ;
-        //        s.wall_pos_of = ;
-        break;
+    // escaping room
+    case 11: {
+        s.num_robos = 70u;
+        s.num_walls = 32u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 100.0f;
+        std::array<Regiment, 2> r{
+            center({{0, 1}, {1, 6}, {2.f, 1.5f}, 3, 6}),
+            center({{-1, 0}, {-4, -2}, {1.f, 1.f}, 8, 64}),
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = make_translate_goal({-20.f, 0.f});
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned i) -> glm::vec2 {
+            switch (i) {
+            case 0: return {0.f, 8.f}; // bottom
+            case 1: return {2.f, 8.f};
+            case 2: return {4.f, 8.f};
+            case 3: return {8.f, 8.f};
+            case 4: return {-6.f, 8.f};
+            case 5: return {-4.f, 8.f};
+            case 6: return {-2.f, 8.f};
 
-    case 12: // crowd
-        assert(false);
-        //       s.num_robos = 100u;
-        //       s.num_walls = 0u;
-        //       s.wall_scale = 0.0f;
-        //       s.max_duration = ;
-        //       s.pos_of = ;
-        //       s.goal_of = ;
-        //       s.wall_shape_of = ;
-        //       s.wall_pos_of = ;
-        break;
+            case 7: return {-8.f, 0.f}; // left
+            case 8: return {-8.f, 2.f};
+            case 9: return {-8.f, 4.f};
+            case 10: return {-8.f, 6.f};
+            case 11: return {-8.f, 8.f};
+            case 12: return {-8.f, -6.f};
+            case 13: return {-8.f, -4.f};
+            case 14: return {-8.f, -2.f};
 
-    case 13: // two tight formations of 20 going down a hall
-        assert(false);
-        //        s.num_robos = 40u;
-        //        s.num_walls = 30u;
-        //        s.wall_scale = 2.0f;
-        //        s.max_duration = ;
-        //        s.pos_of = ;
-        //        s.goal_of = ;
-        //        s.wall_shape_of = ;
-        //        s.wall_pos_of = ;
+            case 15: return {-7.4f, -8.f}; // top
+            case 16: return {1.4f, -8.f};
+            case 17: return {3.4f, -8.f};
+            case 18: return {5.4f, -8.f};
+            case 19: return {-5.4f, -8.f};
+            case 20: return {-3.4f, -8.f};
+            case 21: return {-1.4f, -8.f};
+
+            case 22: return {8.f, 0.f}; // right
+            case 23: return {8.f, 2.f};
+            case 24: return {8.f, 4.f};
+            case 25: return {8.f, 6.f};
+            case 26: return {7.4f, -8.f};
+            case 27: return {8.f, -6.f};
+            case 28: return {8.f, -4.f};
+            case 29: return {8.f, -2.f};
+
+            case 30: return {6.f, 3.f};
+            case 31: return {4.f, 3.f};
+
+            default: return {0.f, 0.f};
+            }
+        };
         break;
+    }
+
+    // dense crowd & groups
+    case 12: {
+        s.num_robos = 200u;
+        s.num_walls = 0u;
+        s.max_duration = 30.f;
+        Seeder sd;
+        typedef uniform_real_distribution<float> UFD;
+        s.pos_of = [&sd](unsigned) {
+            UFD inside(-10.f, 10.f);
+            return glm::vec2(inside(sd.gen()), inside(sd.gen()));
+        };
+        s.goal_of = [&sd](glm::vec2, unsigned) {
+            UFD inside(-10.f, 10.f);
+            return glm::vec2(inside(sd.gen()), inside(sd.gen()));
+        };
+        break;
+    }
+
+    case 13: { // two tight formations of 20 going down a hall
+        s.num_robos = 40u;
+        s.num_walls = 18u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 90.0f;
+        std::array<Regiment, 2> r{
+            center({{1, 0}, {-3, 0}, {.5f, .7f}, 5, 20}),
+            center({{-1, 0}, {3, 0}, {.5f, .7f}, 5, 20}),
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = mirror_x_goal;
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = make_hall(3.f, s.wall_scale);
+        break;
+    }
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
@@ -353,6 +424,47 @@ static Scene make_scene(unsigned scn) {
         };
         s.pos_of = make_regimented_bots(r);
         s.goal_of = mirror_x_goal;
+        break;
+    }
+
+    case 18: { // two-door
+        s.num_robos = 65u;
+        s.num_walls = 20u;
+        s.wall_scale = 2.0f;
+        s.max_duration = 60.f;
+        std::array<Regiment, 2> r{
+            center({{-1, 0}, {3, 3}, {1.f, 1.f}, 5, 5}),
+            center({{-1, 0}, {3, -6}, {1.f, 1.f}, 10, 60}),
+        };
+        s.pos_of = make_regimented_bots(r);
+        s.goal_of = make_translate_goal({-15.f, 0.f});
+        s.wall_shape_of = make_square_shape(s.wall_scale);
+        s.wall_pos_of = [](unsigned i) {
+            float y = 10.f;
+            switch (i) {
+            case 0: y = +1.0f; break;
+            case 1: y = -1.0f; break;
+            case 2: y = +3.0f; break;
+            case 3: y = -3.0f; break;
+            case 4: y = +6.0f; break;
+            case 5: y = -5.0f; break;
+            case 6: y = +8.0f; break;
+            case 7: y = -8.0f; break;
+            case 8: y = +10.0f; break;
+            case 9: y = -10.0f; break;
+            case 10: y = +12.0f; break;
+            case 11: y = -12.0f; break;
+            case 12: y = +14.0f; break;
+            case 13: y = -14.0f; break;
+            case 14: y = +16.0f; break;
+            case 15: y = -16.0f; break;
+            case 16: y = +18.0f; break;
+            case 17: y = -18.0f; break;
+            case 18: y = +20.0f; break;
+            case 19: y = -20.0f; break;
+            }
+            return glm::vec2(0.f, y);
+        };
         break;
     }
     }

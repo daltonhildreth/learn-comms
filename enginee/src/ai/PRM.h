@@ -20,7 +20,6 @@ public:
 
     ~Cspace2d();
 
-private:
     // TODO: unique_ptr
     std::vector<BoundVolume*> _obstacles;
 };

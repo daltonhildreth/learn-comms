@@ -1,12 +1,11 @@
 #pragma once
+#include <experimental/optional>
 #include <glad.h>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
-#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 
 class Shader {
 public:

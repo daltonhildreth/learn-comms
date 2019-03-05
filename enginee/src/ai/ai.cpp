@@ -49,37 +49,40 @@ void init() {
 
         // prm
         glm::vec2 center_2d(0, 0); // org
-        glm::vec2 dim(50 / 2, 50 / 2); // w,h
+        glm::vec2 dim(25 / 2, 25 / 2); // w,h
         dim *= 1; // cellsize
         std_prm = new PRM(
             std::move(cs),
-            root2 * 6.f,
+            5.f * root2,
             0.f,
-            glm::vec2(3.f, 3.f),
-            2,
+            glm::vec2(2.5f, 2.5f),
+            0,
             center_2d - dim,
             center_2d + dim,
             1.f
         ); // 1.f
 
 #ifdef PRM_DEBUG
+#    ifndef NO_RENDER
         auto& rm = std_prm->_roadmap;
         std::vector<Vertex> endpoints(rm->vertex_num());
         std::vector<GLuint> lines(2 * rm->edge_num());
 
         rm->for_vertex([&](NodeId u) {
+            /*
             Entity& v = POOL.spawn_entity();
             uint16_t tid = POOL.create<Transform>(Transform(nullptr));
             std::vector<Texture> tex = {};
-            uint16_t mid = POOL.create<Mesh>(CubeMesh(tex));
+            uint16_t mid = POOL.create<Mesh>(CubeMesh(tex));*/
             glm::vec2 v_pos = *rm->data(u);
-            auto& t = *POOL.get<Transform>(tid);
+            /*auto& t = *POOL.get<Transform>(tid);
             glm::mat4 scale(.3f);
             scale[3][3] = 1.f;
             t.set_mat(scale);
             t.set_pos(glm::vec3(v_pos.x, 0, v_pos.y));
             POOL.attach<Transform>(v, tid);
             POOL.attach<Mesh>(v, mid);
+            */
 
             glm::vec3 pos(v_pos.x, 0, v_pos.y);
             Vertex end;
@@ -98,6 +101,7 @@ void init() {
             uint16_t mid = POOL.create<Mesh>(LineMesh(endpoints, lines));
             POOL.attach<Mesh>(debug_map, mid);
         }
+#    endif
 #endif
 
         // planners

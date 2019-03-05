@@ -66,157 +66,124 @@ std::vector<BoundVolume*> Rect::minkowski_sum_(Circ* b) {
     return bv;
 }
 
+/// is p in circ?
 bool Circ::collides(glm::vec2 p) {
     glm::vec2 diff = p - _o;
     return glm::dot(diff, diff) <= _r * _r;
 }
 
-bool Circ::line_of_sight(glm::vec2 a, glm::vec2 b, glm::vec2 Lab, float len2) {
-    glm::vec2 Lbo = _o - b;
-    float r2 = _r * _r;
-    if (glm::dot(Lbo, Lbo) <= r2) // point b inside circle
-        return false; // HIT
+/// does the line start + La_to_b * t {0<t<1} NOT intersect the circ?
+/// Real-Time collision detection (p179) by Christer Ericson
+bool Circ::line_of_sight(glm::vec2 start, glm::vec2 end) {
+    glm::vec2 d = end - start;
+    glm::vec2 m = start - _o;
+    float b = glm::dot(m, d);
+    float c = glm::dot(m, m) - _r * _r;
 
-    glm::vec2 Lao = _o - a;
-    // we don't use is_collision because we use a lot of these values again
-    if (glm::dot(Lao, Lao) <= r2) // point a inside circle
-        return false; // HIT
+    // outside and pointing away
+    if (c > 0.f && b > 0.f)
+        return true; // MISS, has LoS
 
-    float ang = glm::dot(Lab, Lao);
-    glm::vec2 proj = Lab * (ang / len2);
-    glm::vec2 rej = Lao - proj;
-    float projlen2 = glm::dot(proj, proj);
+    float a = glm::dot(d, d);
+    float discrim = b * b - a * c;
+    if (discrim < 0.f)
+        return true; // MISS, has LoS
 
-    if (glm::dot(rej, rej) <= r2 // close enough tangentially
-        && 0 <= ang // point a before circle center
-        && projlen2 <= len2) // point b after circle center
-        return false; // HIT
+    // hits circ, compute smallest t
+    float t = (-b - sqrt(discrim)) / a;
 
-    return true; // else MISS
+    if (t * t > a) // end of segment is before circ
+        return true; // MISS, has LoS
+
+    return false; // HIT, no LoS
 }
 
-float Circ::intersect(glm::vec2 bo, glm::vec2 v) {
-    // min t = - (u.v) +- sqrt((u.v)^. - (v.v) (u.u - r^))/(v.v)
-    glm::vec2 u = bo - _o;
-    float c = glm::dot(u, u) - _r * _r;
-    if (c < 0) // inside
-        return 0;
+/// where does the ray bo+v*t intersect the circ?
+/// Real-Time Collision detection (p178) by Christer Ericson
+float Circ::intersect(glm::vec2 o, glm::vec2 d) {
+    glm::vec2 m = o - _o;
+    float a = glm::dot(d, d);
+    float b = glm::dot(m, d);
+    float c = glm::dot(m, m) - _r * _r;
 
-    float b = glm::dot(u, v);
-    float a = glm::dot(v, v);
+    // outside and pointing away
+    if (c > 0.f && b > 0.f)
+        return std::numeric_limits<float>::max(); // MISS
 
-    float d = b * b - a * c;
-    if (d <= 0) // no intersect, forward or backwards
-        return std::numeric_limits<float>::max();
+    float discrim = b * b - a * c;
+    if (discrim < 0.f)
+        return std::numeric_limits<float>::max(); // MISS
 
-    float t = (-b - static_cast<float>(sqrt(d))) / a;
-    if (t < 0) // intersction is behind ray
-        return std::numeric_limits<float>::max();
+    // hits circ, compute smallest t
+    float t = (-b - sqrt(discrim)) / a;
 
+    if (t < 0.f) // inside sphere
+        return 0.f;
     return t;
 }
 
+/// is p in rect?
 bool Rect::collides(glm::vec2 p) {
     return fabs(p.x - _o.x) <= _w / 2 && fabs(p.y - _o.y) <= _h / 2;
 }
 
-static bool on_line(float t) { return 0 <= t && t <= 1; }
+/// does the line a + (b-a) * t {0<t<1} NOT intersect the rect?
+/// largely taken from p183 of real-time collision detection by Christer Ericson
+bool Rect::line_of_sight(glm::vec2 a, glm::vec2 b) {
+    glm::vec2 rmin{_o.x - _w / 2, _o.y - _h / 2};
+    glm::vec2 rmax{_o.x + _w / 2, _o.y + _h / 2};
+    glm::vec2 e = rmax - rmin; // halflength extent
+    glm::vec2 m = a + b - rmin - rmax; // midpoint
+    glm::vec2 d = b - a; // halflength vector
 
-static bool on_ray(float t) { return 0 <= t; }
+    // Separating axes of world coordinates
+    float adx = fabs(d.x);
+    if (fabs(m.x) > e.x + adx)
+        return true; // MISS, has LoS
+    float ady = fabs(d.y);
+    if (fabs(m.y) > e.y + ady)
+        return true; // MISS, has Los
 
-template <bool(f)(float)> static float hit_clamp(float t) {
-    return f(t) ? t : std::numeric_limits<float>::max();
+    // add an epsilon to deal with (nearly) parllel segments to axes
+    adx += 0.0000001f;
+    ady += 0.0000001f;
+
+    // try edge-edge cross-products of separating axes
+    if (fabs(m.x * d.y - m.y * d.x) > e.x * ady + e.y * adx)
+        return true; // MISS, has LoS
+
+    return false; // no separating axis, HIT, no LoS
 }
 
-static bool hit(float t) { return t < std::numeric_limits<float>::max(); }
-
-// find (t, s) such that Lo + Ld*t = Mo + Md*s
-// TODO: make this function clearer
-static std::pair<float, float> line_intersect(
-    glm::vec2 Lo,
-    glm::vec2 Ld,
-    glm::vec2 Mo,
-    glm::vec2 Md
-) {
-    glm::vec2 MLo = Mo - Lo;
-    float s = (Ld.x * MLo.y - Ld.y * MLo.x) / (Md.x * Ld.y - Md.y * Ld.x);
-    float t;
-    if (fabs(Ld.x) < 0.00000001) {
-        t = (Mo.y + Md.y * s - Lo.x) / Ld.y;
-    } else {
-        t = (Mo.x + Md.x * s - Lo.x) / Ld.x;
-    }
-    return {t, s};
-}
-
-bool Rect::line_of_sight(
-    glm::vec2 start,
-    glm::vec2 /*end*/,
-    glm::vec2 La_to_b,
-    float len2
-) {
-    // dims
-    float l = _o.x - _w / 2;
-    float r = _o.x + _w / 2;
-    float t = _o.y + _h / 2;
-    float b = _o.y - _h / 2;
-    // corners
-    glm::vec2 bl(l, b);
-    glm::vec2 br(r, b);
-    glm::vec2 tl(l, t);
-    glm::vec2 tr(r, t);
-
-    std::array<std::pair<glm::vec2, glm::vec2>, 4> edges = {
-        std::make_pair(tl, tr),
-        std::make_pair(br, tr),
-        std::make_pair(bl, br),
-        std::make_pair(bl, tl),
-    };
-
-    La_to_b /= sqrtf(len2);
-    return std::none_of(
-        edges.cbegin(),
-        edges.cend(),
-        [start, La_to_b, len2](std::pair<glm::vec2, glm::vec2> edge) {
-            auto parametrics = line_intersect(
-                start, La_to_b, edge.first, edge.second - edge.first
-            );
-            return hit(hit_clamp<on_line>(parametrics.second))
-                && hit(hit_clamp<on_line>(parametrics.first / len2));
-        }
-    );
-}
-
-// assumes axis alignment
+/// where does the ray bo+v*t intersect the rect?
+/// largely taken from p181 of real-time collision detection by Christer Ericson
+/// TODO: many of the same ray optimizations
 float Rect::intersect(glm::vec2 bo, glm::vec2 v) {
-    if (collides(bo))
-        return 0;
+    float tmin = 0.0f;
+    float tmax = std::numeric_limits<float>::max(); // distance ray can travel
+    glm::vec2 rmin{_o.x - _w / 2, _o.y - _h / 2};
+    glm::vec2 rmax{_o.x + _w / 2, _o.y + _h / 2};
 
-    // dims
-    float l = _o.x - _w / 2;
-    float r = _o.x + _w / 2;
-    float t = _o.y + _h / 2;
-    float b = _o.y - _h / 2;
-    // corners
-    glm::vec2 bl(l, b);
-    glm::vec2 br(r, b);
-    glm::vec2 tl(l, t);
-    glm::vec2 tr(r, t);
-
-    std::array<std::pair<glm::vec2, glm::vec2>, 4> edges = {
-        std::make_pair(tr, tl),
-        std::make_pair(br, tr),
-        std::make_pair(bl, br),
-        std::make_pair(tl, bl)};
-
-    // find closest edge
-    float p = std::numeric_limits<float>::max();
-    for (auto& pair : edges) {
-        auto&& edge =
-            line_intersect(bo, v, pair.second, pair.first - pair.second);
-        if (hit(hit_clamp<on_line>(edge.second))) {
-            p = std::min(p, hit_clamp<on_ray>(edge.first));
+    for (int i = 0; i < 2; ++i) {
+        if (fabs(v[i]) < 0.0000001f) {
+            // parallel line
+            if (bo[i] < rmin[i] || bo[i] > rmax[i]) {
+                return std::numeric_limits<float>::max(); // MISS
+            }
+        } else {
+            // what are the near and far plane of this dimension's slab
+            float near = (rmin[i] - bo[i]) / v[i];
+            float far = (rmax[i] - bo[i]) / v[i];
+            if (near > far) {
+                std::swap(near, far);
+            }
+            tmin = std::max(tmin, near);
+            tmax = std::min(tmax, far);
+            // if any slab intersection do not overlap, there is LoS
+            if (tmin > tmax) {
+                return std::numeric_limits<float>::max(); // MISS
+            }
         }
     }
-    return p;
+    return tmin; // HIT
 }

@@ -21,14 +21,17 @@ unique_ptr<Nodes> PRM::nearby(NodeId source) {
 void PRM::connect() {
     _roadmap->for_vertex([&](NodeId v) {
         // connect nearby nodes to v
+        unsigned connected_to = 0;
         auto near = nearby(v);
         for (NodeId i : *near) {
+            // if (connected_to >= 10) break;
             // if the nearby points are within line of sight
             if ( //
                 _cspace->line_of_sight(*_roadmap->data(v), *_roadmap->data(i))
             ) {
                 // directed because we'll traverse the other side in for_vertex
                 _roadmap->add_dir_edge(v, i);
+                ++connected_to;
             }
         }
     });
@@ -67,6 +70,35 @@ void PRM::sample_space() {
                 if (!collides) {
                     _roadmap->add_vertex(sample);
                 }
+            }
+        }
+    }
+
+    // for each obstacle
+    for (const auto& o : _cspace->_obstacles) {
+        glm::vec2 h;
+        glm::vec2 l;
+        if (o->_vt == BoundVolume::volume_type::RECT) {
+            auto r = static_cast<const Rect*>(o);
+            h = {r->_o.x + r->_w / 2 + 0.3, r->_o.y + r->_h / 2 + 0.3};
+            l = {r->_o.x - r->_w / 2 - 0.3, r->_o.y - r->_h / 2 - 0.3};
+        } else {
+            auto c = static_cast<const Circ*>(o);
+            h = {c->_o.x + c->_r + 0.3, c->_o.y + c->_r + 0.3};
+            l = {c->_o.x - c->_r - 0.3, c->_o.y - c->_r - 0.3};
+        }
+
+        glm::vec2 hh{h.x, h.y};
+        glm::vec2 hl{h.x, l.y};
+        glm::vec2 mh{(h.x + l.x) * .5f, h.y};
+        glm::vec2 ml{(h.x + l.x) * .5f, l.y};
+        glm::vec2 lh{l.x, h.y};
+        glm::vec2 ll{l.x, l.y};
+        glm::vec2 hm{h.x, (h.y + l.y) * .5f};
+        glm::vec2 lm{l.x, (h.y + l.y) * .5f};
+        for (const glm::vec2& p : {hh, hl, mh, ml, lh, ll, hm, lm}) {
+            if (!_cspace->collides(p)) {
+                _roadmap->add_vertex(p);
             }
         }
     }
@@ -120,12 +152,7 @@ bool Cspace2d::collides(glm::vec2 p) {
 }
 
 bool Cspace2d::line_of_sight(glm::vec2 a, glm::vec2 b) {
-    glm::vec2 Lab;
-    Lab.x = b.x - a.x;
-    Lab.y = b.y - a.y;
-    float len2 = glm::dot(Lab, Lab);
-
-    return std::all_of(_obstacles.begin(), _obstacles.end(), [=](auto* bv) {
-        return bv->line_of_sight(a, b, Lab, len2);
+    return std::all_of(_obstacles.begin(), _obstacles.end(), [&](auto* bv) {
+        return bv->line_of_sight(a, b);
     });
 }

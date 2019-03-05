@@ -17,12 +17,7 @@ public:
     volume_type _vt;
 
     virtual bool collides(glm::vec2 p) = 0;
-    virtual bool line_of_sight(
-        glm::vec2 a,
-        glm::vec2 b,
-        glm::vec2 Lab,
-        float len2
-    ) = 0;
+    virtual bool line_of_sight(glm::vec2 a, glm::vec2 b) = 0;
     virtual float intersect(glm::vec2 bo, glm::vec2 v) = 0;
     virtual std::vector<BoundVolume*> minkowski_sum(BoundVolume*) = 0;
     virtual ~BoundVolume();
@@ -40,7 +35,7 @@ public:
     float _h; // height
 
     bool collides(glm::vec2 p);
-    bool line_of_sight(glm::vec2 a, glm::vec2 b, glm::vec2 Lab, float len2);
+    bool line_of_sight(glm::vec2 a, glm::vec2 b);
     float intersect(glm::vec2 bo, glm::vec2 v);
     std::vector<BoundVolume*> minkowski_sum(BoundVolume*);
     std::vector<BoundVolume*> minkowski_sum_(Rect* b);
@@ -77,7 +72,7 @@ public:
     float _r;
 
     bool collides(glm::vec2 p);
-    bool line_of_sight(glm::vec2 a, glm::vec2 b, glm::vec2 Lab, float len2);
+    bool line_of_sight(glm::vec2 a, glm::vec2 b);
     float intersect(glm::vec2 bo, glm::vec2 v);
     std::vector<BoundVolume*> minkowski_sum(BoundVolume*);
     std::vector<BoundVolume*> minkowski_sum_(Rect* b);
