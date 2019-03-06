@@ -89,6 +89,7 @@ class Particle:
         trace.write("\t\tprocess id %d\n" % getpid())
         trace.write("xr %f\n" % self.pos.score)
         trace.write("norm xr/b %f\n" % (self.pos.score / base.score))
+        trace.write("Gf %s\n" % global_min.file)
         trace.write("Gr %f\n" % global_min.score)
         trace.write("norm xr/Gr %f\n" % (self.pos.score / global_min.score))
         trace.write("xM\n%s\n" % pretty_mat(self.pos.config))
@@ -216,13 +217,20 @@ async def simulate(scene, config, data_dir, save_name):
     return Point(config, read_result(sim_result), save_name)
 
 
+SEMAPHORE = None
+
+
 async def record(scene, data_dir, with_comm):
     prog = "build/bin/" + ("" if with_comm else "no") + "comm_render"
     args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record"]
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
 
-    await log_exec(prog, args, "%s/%d" % (data_dir, scene.id))
+    try:
+        async with SEMAPHORE:
+            await log_exec(prog, args, "%s/%d" % (data_dir, scene.id))
+    except RuntimeError:
+        pass
 
 
 async def hstack(left, right, out):
@@ -280,12 +288,14 @@ async def PSO(data_dir, scene_set, hypers):
             with open("data/%s/opt.log" % data_dir, "a") as trace:
                 p.debug(trace, baseline, global_min)
 
-        # the potential variation of the fastest particle
-        convergence = abs(max([np.linalg.norm(p.vel) for p in particles]))
+        # the mean of the per-dimension IQR of particle positions; "spread"
+        positions = [p.pos.config for p in particles]
+        q3, q1 = np.percentile(positions, [75, 25], axis=0)
+        convergence = np.mean(q3 - q1)
         with open("data/" + conv_path, "a") as f_conv:
             f_conv.write("i: " + str(i) + ",  c: " + str(convergence) + "\n")
-        if convergence < hypers.max_convergence:
-            return "conv", baseline.score, global_min.score, global_min.file
+        # if convergence < hypers.max_convergence:
+        #    return "conv", baseline.score, global_min.score, global_min.file
     return "iter", baseline.score, global_min.score, global_min.file
 
 
@@ -305,40 +315,40 @@ def summarize(run, per_result_table):
     n_models = len(per_result_table)
     per_result_table = list(zip(*per_result_table))
 
-    with open("data/%s/best.tsv" % run, "w") as best:
+    with open("data/%s/best.tsv" % run, "a") as best:
         header = ["model#", "min config", "comm Jt", "ttc Jt", "exit"]
         best.write("\t".join(header) + "\n")
         for row in per_result_table[0]:
             best.write("\t".join(row) + "\n")
 
-    with open("data/%s/cross_val.tsv" % run, "w") as cross_val:
-        cross_val.write(
-            "\t".join(
-                [
-                    "tests",
-                    *["%d\t%d/b" % (i, i) for i in range(n_models)],
-                    "baseline",
-                ]
-            )
-        )
-        cross_val.write("\n")
+    # write out summary of each name/t#_min/cross_val.tsv file
+    with open("data/%s/cross_val.tsv" % run, "a") as cross_val:
+        header = ["tests", *["%d\t%d/b" % (i, i) for i in range(n_models)], "b"]
+        cross_val.write("\t".join(header) + "\n")
+
+        # Determine which scenes were tested, so only they are output as rows
+        # even when a model didn't test that scene
         tested_scenes = set()
         for model in per_result_table[1]:
             for scene in model:
                 tested_scenes.add(scene[0])
         tested_scenes = sorted(tested_scenes)
 
+        # build matrix of models (columns) validated on tests (rows)
+        # None means that model didn't test that scene
         xcorr_matrix = []
         for _ in range(len(tested_scenes)):
             xcorr_matrix += [[None] * (n_models + 1)]
         for col, model in enumerate(per_result_table[1]):
-            for row, (s_id, r, b) in enumerate(model):
-                xcorr_scene = tested_scenes.index(s_id)
-                xcorr_matrix[xcorr_scene][col] = r
+            for row, (scene_id, result, baseline) in enumerate(model):
+                xcorr_scene = tested_scenes.index(scene_id)
+                xcorr_matrix[xcorr_scene][col] = result
                 if not xcorr_matrix[xcorr_scene][-1]:
-                    xcorr_matrix[xcorr_scene][-1] = b
+                    xcorr_matrix[xcorr_scene][-1] = baseline
 
-        print(xcorr_matrix)
+        # write out the rows of the xcorr_matrix as lines. None -> "--------"
+        # each result becomes the result & result / baseline
+        # only 1 baseline is written at the end of the line
         for scene, row in enumerate(xcorr_matrix):
             baseline = xcorr_matrix[scene][-1]
             line = [str(tested_scenes[scene])]
@@ -356,20 +366,25 @@ async def train(run_name, model_id, scene_set, meta_args):
     minimum = await PSO(data_dir, scene_set, meta_args)
     cp_min(run_name, model_id, scene_set, minimum)
     how, base_val, min_val, min_particle = minimum
-    return [str(model_id), min_particle, "%f" % min_val, "%f" % base_val, how]
+    ret = [str(model_id), min_particle, "%f" % min_val, "%f" % base_val, how]
+
+    with open("data/%s/t%d_min/best.tsv" % (run_name, model_id), "w") as f:
+        f.write("model#\tmin p\tcomm Jt\tttc Jt\texit\n")
+        f.write("\t".join(ret) + "\n")
+    return ret
 
 
 async def cross_validate(name, model_id, test_set):
     tests = (validate(name, model_id, scene) for scene in test_set)
     cross_val = await asyncio.gather(*tests)
-    with open("data/%s/t%d_min/cross_val.tsv" % (name, model_id), "w") as f:
+    with open("data/%s/t%d_min/cross_val.tsv" % (name, model_id), "a") as f:
         f.write("model_id\t%d\n" % model_id)
         for i, scene in enumerate(test_set):
-            f.write("\t".join(str(scene.id), *cross_val[i]) + "\n")
+            scene_val = [str(j) for j in cross_val[i][1:]]
+            f.write("\t".join([str(scene.id)] + scene_val) + "\n")
     return cross_val
 
 
-# FIXME: this is a terrible name.
 async def task_batch(args, model_id, batch, test_sets):
     batch = [Scene(scene, args.seed) for scene in batch]
     hyper = HyperParameters(
@@ -384,9 +399,21 @@ async def task_batch(args, model_id, batch, test_sets):
     cross_val = await cross_validate(
         args.name,
         model_id,
-        (Scene(scene, args.seed) for scene in test_sets[model_id]),
+        [Scene(scene, args.seed) for scene in test_sets[model_id]],
     )
-    return model, cross_val
+    return model, cross_val, True
+
+
+async def task_reload(name, model_name, retest_sets):
+    # expect args.name/t(model_name)_min to exist as a dir
+    # use args.name/t(model_name)_min as the data_dir for recording comms.config
+    # cross_validate retest_sets on the data_dir, but append to cross_val.tsv
+    cross_val = await cross_validate(
+        name,
+        model_name,
+        [Scene(scene, args.seed) for scene in retest_sets[model_name]],
+    )
+    return ["rl" + str(model_name)], cross_val, False
 
 
 if __name__ == "__main__":
@@ -396,31 +423,47 @@ if __name__ == "__main__":
         "model for the Talking Hive project.",
     )
     parser.add_argument("name", type=str)
-    parser.add_argument("--n_particles", type=int, default=12)
-    parser.add_argument("--w_inertia", type=float, default=0.2)
-    parser.add_argument("--w_local", type=float, default=0.2)
-    parser.add_argument("--w_global", type=float, default=0.2)
-    # many seeds do not work thanks to PRM unreliability, use 62 for these
-    # scenes when on Dalton's laptop: 0..10, 14..17
-    # and use seed = 0 when on motioncore-umh.cs.umn.edu
+    parser.add_argument("--n_particles", type=int, default=40)  # 30)
+    parser.add_argument("--w_inertia", type=float, default=0.6)  # 0.729)
+    parser.add_argument("--w_local", type=float, default=1.7)  # 1.494)
+    parser.add_argument("--w_global", type=float, default=1.7)  # 1.494)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--iters", type=int, default=100)
+    parser.add_argument("--iters", type=int, default=225)  # 300) # 450)
     parser.add_argument("--convergence", type=float, default=1e-9)
     # not really str, only sometimes. Usually int... : a or int...
     parser.add_argument("--batch", type=str, nargs="*", action="append")
+    # not really str, only sometimes. Usually int... : a or int...
+    parser.add_argument("--reload", type=str, nargs="*", action="append")
+    # parser.add_argument("--audio")
+    # parser.add_argument("--visual")
     args = parser.parse_args()
 
-    all_scenes = list(chain(range(0, 10 + 1), range(14, 17 + 1)))
+    all_scenes = list(range(0, 18 + 1))
 
-    train_sets = [i[: i.index(":")] for i in args.batch]
-    train_sets = [[int(i) for i in s] for s in train_sets]
-    test_sets = [i[i.index(":") + 1 :] for i in args.batch]
-    for i, v in enumerate(test_sets):
-        if v[0].lower() == "a" or v[0].lower() == "al" or v[0].lower() == "all":
-            test_sets[i] = all_scenes
-        else:
-            for j, u in enumerate(v):
-                test_sets[i][j] = int(u)
+    train_sets = []
+    test_sets = []
+    if args.batch:
+        train_sets = [i[: i.index(":")] for i in args.batch]
+        train_sets = [[int(i) for i in s] for s in train_sets]
+        test_sets = [i[i.index(":") + 1 :] for i in args.batch]
+        for i, v in enumerate(test_sets):
+            if "all".find(v[0].lower()) == 0:
+                test_sets[i] = all_scenes
+            else:
+                for j, u in enumerate(v):
+                    test_sets[i][j] = int(u)
+
+    reload_models = []
+    retest_sets = []
+    if args.reload:
+        reload_models = [int(i[0]) for i in args.reload]
+        retest_sets = [i[1:] for i in args.reload]
+        for i, v in enumerate(retest_sets):
+            if "all".find(v[0].lower()) == 0:
+                retest_sets[i] = all_scenes
+            else:
+                for j, u in enumerate(v):
+                    retest_sets[i][j] = int(u)
 
     # Final directory layout of run:
     # best.tsv
@@ -450,18 +493,33 @@ if __name__ == "__main__":
     # For a high-Level of what should be going on, see test_async.py
     event_loop = asyncio.get_event_loop()
     try:
-        batches = (
-            task_batch(args, i, batch, test_sets)
-            for i, batch in enumerate(train_sets)
+        tasks = chain(
+            (
+                task_batch(args, i, batch, test_sets)
+                for i, batch in enumerate(train_sets)
+            ),
+            (
+                task_reload(args.name, model, retest_sets)
+                for model in reload_models
+            ),
         )
 
-        optimize = asyncio.gather(*batches)  # , return_exceptions=True)
+        SEMAPHORE = asyncio.Semaphore(len(all_scenes))
+        optimize = asyncio.gather(*tasks)  # , return_exceptions=True)
         minima = event_loop.run_until_complete(optimize)
+        print("model  sets  outcome")
         for i, outcome in enumerate(optimize.result()):
             if isinstance(outcome, Exception):
-                print("ERROR", i, train_sets[i], outcome)
+                print(train_sets)
+                print("ERROR", i, outcome)
             else:
-                print(i, train_sets[i], outcome)
+                if outcome[2]:
+                    print(i, train_sets[i])
+                else:
+                    print(i, reload_models[i])
+                print("\t", outcome[0])
+                for i in outcome[1]:
+                    print("\t", i[1:])
 
         summarize(args.name, minima)
 
