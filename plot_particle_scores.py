@@ -33,7 +33,7 @@ kind = "mar5_0341_audio"#"mar5_1826_visual"#"mar6_1445_both"
 nits = 500#225
 
 # separate plots
-fig, ax = plt.subplots()#nrows=19, ncols=1, figsize=(3, 9))
+fig, ax = plt.subplots(figsize=(6,6))#nrows=19, ncols=1, figsize=(3, 9))
 #fig.tight_layout()
 #ax[0] = plt.subplot2grid((3, 20), (0, 0), colspan=20)
 #ax[1] = plt.subplot2grid((3, 20), (1, 0), colspan=9)
@@ -50,7 +50,7 @@ for plot in range(18 + 1):
     its = np.arange(0, nits + 1, 1)
     for p in range(40):
         particles += [[]]
-    with open("data/%s/t%d_train/opt_xrG" % (kind, plot), "r") as f:
+    with open("data/%s/t%d_train/opt_xrb" % (kind, plot), "r") as f:
         for p, line in enumerate(f):
             c = float(line.split()[-1])
             particles[p % 40] += [c]
@@ -58,12 +58,15 @@ for plot in range(18 + 1):
     particles = list(zip(*particles))
     iqr = []
     for i in its:
-        q2 = np.percentile(particles[i], 50, axis=0)
-        s = np.mean(particles[i] - np.ones((40,))*q2)
-        iqr += [math.log(abs(s), 10)]
+        # plot min
+        # plot median
+        # plot max
+        q2 = np.percentile(particles[i], 0, axis=0)
+        #s = np.mean(particles[i] - np.ones((40,))*q2)
+        iqr += [math.log(abs(q2), 10)]
         max_c = max(max_c, iqr[-1])
         min_c = min(min_c, iqr[-1])
-    window = 5
+    window = 3
     for i in its[window:]:
         iqr[i] = np.mean(iqr[i-window:i+1])
 
@@ -78,5 +81,6 @@ for plot in range(18 + 1):
     ax.set_xticks(ir)
     ax.set_xticklabels(ir, rotation=90)
     #ax.set_title("%d" % plot, loc="right", ha="left", va="top")
+ax.legend(['%d' % plot for plot in range(19)], loc = "right")
 
 plt.show()

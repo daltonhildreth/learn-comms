@@ -3,6 +3,7 @@
 #include "light/DirLight.h"
 #include "light/PointLight.h"
 #include "model/CubeMesh.h"
+#include "model/CylinderMesh.h"
 #include "render.h"
 #include "util/Seeder.h"
 #include "util/debug.h"
@@ -132,6 +133,7 @@ struct Scene {
     std::function<glm::vec2(unsigned)> wall_pos_of = ignore_wall;
 };
 
+// TODO: replace with reading a file with data
 static Scene make_scene(unsigned scn) {
     Scene s;
 
@@ -139,15 +141,16 @@ static Scene make_scene(unsigned scn) {
     case 0: // circle radius 10; 30 agents; 45s
         s.num_robos = 60u;
         s.max_duration = 45.f;
+        s.cam_dist = .85f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
         break;
 
     case 1: // circle radius 20; 90 agents 70s
-        s.num_robos = 60u;
+        s.num_robos = 90u;
         s.max_duration = 70.f;
-        s.cam_dist = 1.4f;
-        s.pos_of = make_radial_bots(s.num_robos, 20.f);
+        s.cam_dist = 1.1f;
+        s.pos_of = make_radial_bots(s.num_robos, 13.f);
         s.goal_of = opposite_goal;
         break;
 
@@ -155,6 +158,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 60u;
         s.num_walls = 60u;
         s.wall_scale = 0.3f;
+        s.cam_dist = .85f;
         s.max_duration = 40.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
@@ -170,6 +174,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 60u;
         s.num_walls = 1u;
         s.wall_scale = 4.0f;
+        s.cam_dist = .85f;
         s.max_duration = 40.f;
         s.pos_of = make_radial_bots(s.num_robos, 10.f);
         s.goal_of = opposite_goal;
@@ -180,7 +185,7 @@ static Scene make_scene(unsigned scn) {
     case 4: // interesection 14 wide; 112 agents; 40s
         s.num_robos = 56u;
         s.max_duration = 40.f;
-        s.cam_dist = 1.2f;
+        s.cam_dist = .6f;
         s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = axial_goal;
         break;
@@ -188,7 +193,7 @@ static Scene make_scene(unsigned scn) {
     case 5: // interesection 14 wide; 112 agents; swapped goals; 70s
         s.num_robos = 56u;
         s.max_duration = 70.f;
-        s.cam_dist = 1.2f;
+        s.cam_dist = .6f;
         s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = opposite_goal;
         break;
@@ -198,7 +203,7 @@ static Scene make_scene(unsigned scn) {
         s.num_walls = 12u;
         s.wall_scale = 2.0f;
         s.max_duration = 40.f;
-        s.cam_dist = 1.2f;
+        s.cam_dist = .6f;
         s.pos_of = make_intersecting_bots(s.num_robos / 4, 7, 6.f);
         s.goal_of = axial_goal;
         s.wall_shape_of = make_square_shape(s.wall_scale);
@@ -226,6 +231,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 2u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .3f;
         s.max_duration = 70.f;
         s.pos_of = [](unsigned i) {
             return (i == 0 ? glm::vec2(-3.f, 0) : glm::vec2(3.f, 0));
@@ -239,6 +245,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 4u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .3f;
         s.max_duration = 30.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 2, 2}),
@@ -255,6 +262,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .6f;
         s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 20}),
@@ -271,6 +279,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 30u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .8f;
         s.max_duration = 100.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, 5}),
@@ -363,6 +372,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 40u;
         s.num_walls = 18u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .6f;
         s.max_duration = 90.0f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-3, 0}, {.5f, .7f}, 5, 20}),
@@ -377,6 +387,7 @@ static Scene make_scene(unsigned scn) {
 
     case 14: // staggered 1 on 1
         s.num_robos = 2u;
+        s.cam_dist = .6f;
         s.max_duration = 30.f;
         s.pos_of = [](unsigned i) {
             return (i == 0 ? glm::vec2(-5.f, .1f) : glm::vec2(3.f, 0));
@@ -386,6 +397,7 @@ static Scene make_scene(unsigned scn) {
 
     case 15: // staggered 1 on 2
         s.num_robos = 3u;
+        s.cam_dist = .6f;
         s.max_duration = 40.f;
         s.pos_of = [](unsigned i) {
             switch (i) {
@@ -401,6 +413,7 @@ static Scene make_scene(unsigned scn) {
 
     case 16: // staggered 2 on 2
         s.num_robos = 4u;
+        s.cam_dist = .6f;
         s.max_duration = 40.f;
         s.pos_of = [](unsigned i) {
             switch (i) {
@@ -417,6 +430,7 @@ static Scene make_scene(unsigned scn) {
 
     case 17: { // staggered equal 2 on equal 2
         s.num_robos = 4u;
+        s.cam_dist = .6f;
         s.max_duration = 45.f;
         std::array<Regiment, 2> r{
             center({{1, 0}, {-5, .1f}, {1.f, 1.f}, 2, 2}),
@@ -431,6 +445,7 @@ static Scene make_scene(unsigned scn) {
         s.num_robos = 65u;
         s.num_walls = 20u;
         s.wall_scale = 2.0f;
+        s.cam_dist = .9f;
         s.max_duration = 60.f;
         std::array<Regiment, 2> r{
             center({{-1, 0}, {3, 3}, {1.f, 1.f}, 5, 5}),
@@ -498,22 +513,25 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 }
 
 static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
+    float s = .3f;
 #ifdef NO_RENDER
     UNUSED(texs);
 #endif
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
 #ifndef NO_RENDER
-    uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
+    uint16_t mid = POOL.create<Mesh>(CylinderMesh(texs, 18, .5f));
+    //uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
 #endif
     uint16_t did = POOL.create<Dynamics>(Dynamics());
-    uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, .3f, .3f));
+    //uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, s, s));
+    uint16_t bvid = POOL.create<BoundVolume*>(new Circ(pos, s * .5f));
     uint16_t aid = POOL.create<Agent>(Agent());
 #ifndef NO_COMM
     uint16_t cid = POOL.create<CommComp>(CommComp());
 #endif
 
     auto& t = *POOL.get<Transform>(tid);
-    glm::mat4 scale(.3f);
+    glm::mat4 scale(s);
     scale[1][1] = 1.f;
     scale[3][3] = 1.f;
     t.set_mat(scale);
@@ -551,6 +569,8 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 
 void init(unsigned scn_i) {
     string pwd(PROJECT_SRC_DIR);
+    // TODO: open buffer to {this_scene}/{mode}.paths
+    // id, groupID, x, y, vx, vy, radius, timeSTAMP
 
     scn = make_scene(scn_i);
 

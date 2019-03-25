@@ -12,38 +12,44 @@
 // TODO: properly polymorph for all BoundingVolumes
 float LMP::ttc(BoundVolume& i, glm::vec2 iv, BoundVolume& j, glm::vec2 jv) {
     // I wish there was a way I didn't have to check the types..
+    float ttc = -1.f;
     if (i._vt == BoundVolume::volume_type::CIRC) {
         Circ& c = static_cast<Circ&>(i);
         if (j._vt == BoundVolume::volume_type::CIRC) {
-            return ttc_(c, iv, static_cast<Circ&>(j), jv);
+            ttc = ttc_(c, iv, static_cast<Circ&>(j), jv);
         } else if (j._vt == BoundVolume::volume_type::RECT) {
-            return ttc_(c, iv, static_cast<Rect&>(j), jv);
+            ttc = ttc_(c, iv, static_cast<Rect&>(j), jv);
         }
     } else if (i._vt == BoundVolume::volume_type::RECT) {
         Rect& r = static_cast<Rect&>(i);
         if (j._vt == BoundVolume::volume_type::RECT) {
-            return LMP::ttc_(r, iv, static_cast<Rect&>(j), jv);
+            ttc = LMP::ttc_(r, iv, static_cast<Rect&>(j), jv);
         } else if (j._vt == BoundVolume::volume_type::CIRC) {
-            return LMP::ttc_(static_cast<Circ&>(j), jv, r, iv);
+            ttc = LMP::ttc_(static_cast<Circ&>(j), jv, r, iv);
         }
     }
-    return std::numeric_limits<float>::max();
+    if (ttc < 0 || std::isnan(ttc))
+        return std::numeric_limits<float>::max();
+    else
+        return ttc;
 }
 
 float LMP::ttc_(Circ& i, glm::vec2 iv, Circ& j, glm::vec2 jv) {
-    /*    float r = i->r + j->r;
-    glm::vec2 w = j->o - i->o;
+    /*
+    float r = i._r + j._r;
+    glm::vec2 w = j._o - i._o;
     float w2 = glm::dot(w, w);
     float c = w2 - r * r;
     if (c < 0) {// agents are colliding
-    return 0; //original
+        //return 0; //original
 
-    //as per Stephen Guy's suggestion; halve the radii when colliding
-    //as per Caleb Biasco's suggestion; use the smallest radii, not both
-    //float smaller = (i->r > j->r ? j->r : i->r);
-    //r -= smaller;
-    //c = w2 - r * r;
-    }    */
+        //as per Stephen Guy's suggestion; halve the radii when colliding
+        //as per Caleb Biasco's suggestion; use the smallest radii, not both
+        float smaller = (i._r > j._r ? j._r : i._r);
+        r -= smaller;
+        c = w2 - r * r;
+    }
+    */
     Circ cspace_circ = Circ(i._o, i._r + j._r);
     return cspace_circ.intersect(j._o, jv - iv);
 }
@@ -223,7 +229,7 @@ boid_speed;
 glm::vec2 LMP::calc_sum_force(
     Entity* e,
     BVH* static_bvh,
-    BVH* dynamic_bvh,
+    BVH* ,//dynamic_bvh,
     std::vector<Entity*>, // statics
     std::vector<Entity*> // dynamics) {
 ) {
@@ -250,7 +256,7 @@ glm::vec2 LMP::calc_sum_force(
 
     goal_F = 2.0f * (goal_vel - glm::vec2(d.vel.x, d.vel.z));
 
-    float real_speed = glm::length(d.vel);
+    //float real_speed = glm::length(d.vel);
 
     /* ttc - approximate */
     glm::vec2 ttc_F(0);
@@ -258,26 +264,27 @@ glm::vec2 LMP::calc_sum_force(
     // have to replace this circle with an extrusion or cone. ... or a shifted
     // circle! this works pretty damn well! 1000 Agents at 30FPS!! :D
     glm::vec2 vel2d(d.vel.x, d.vel.z);
-    Circ q(bv._o, real_speed * static_cast<float>(TTC_THRESHOLD));
+    Circ q(bv._o, 2.f * static_cast<float>(TTC_THRESHOLD));
 
-    auto NNdynamic = dynamic_bvh->query(&q);
-    for (auto& nearby_query : NNdynamic) {
-        Entity* nearby = nearby_query.first;
-        Agent* b = POOL.get<Agent>(*nearby);
-        BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
-        Dynamics& bd = *POOL.get<Dynamics>(*nearby);
-        if (&a == b) {
+    //auto NNdynamic = dynamic_bvh->query(&q);
+    //for (auto& nearby_query : NNdynamic) {
+    POOL.for_<Agent>([&](Agent& b, Entity& nearby) {
+        //Entity* nearby = nearby_query.first;
+        //Agent* b = POOL.get<Agent>(*nearby);
+        BoundVolume& bbv = **POOL.get<BoundVolume*>(nearby);
+        Dynamics& bd = *POOL.get<Dynamics>(nearby);
+        if (&a == &b) {
             // if the agents are the same, move on.
-            continue;
+            return;//continue
         }
         double ttc = LMP::ttc(
             bv, glm::vec2(d.vel.x, d.vel.z), bbv, glm::vec2(bd.vel.x, bd.vel.z)
         );
         if (ttc > TTC_THRESHOLD) { // seconds
-            continue;
+            return;//continue
         }
         ttc_F += LMP::ttc_forces(d, bv, bd, bbv, static_cast<float>(ttc));
-    }
+    });
 
     auto NNstatic = static_bvh->query(&q);
     for (auto& nearby_query : NNstatic) {

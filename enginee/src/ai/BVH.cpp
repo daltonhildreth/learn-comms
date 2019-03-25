@@ -1,5 +1,7 @@
 #include "BVH.h"
 #include "Pool.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
 
 BVH::BVH(): o(nullptr), right(nullptr) {}
 
@@ -141,24 +143,21 @@ bool BVH::rect_rect_collider_(Rect* q, Rect* r) {
     return Rect(r->_o, w, h).collides(q->_o);
 }
 
-// TODO: faster if you compute the distance^2 of closest point on AABB to Circ,
-// and then compare that distance to Circ's radius
 bool BVH::circ_rect_collider_(Circ* q, Rect* r) {
-    glm::vec2 L = r->_o - q->_o;
-    L /= sqrt(glm::dot(L, L));
-    L *= q->_r;
-    L += q->_o;
-    return q->collides(r->_o) || r->collides(L);
+    glm::vec2 on_q = closest_circ_point_(r->_o, q);
+    return q->collides(r->_o) || r->collides(on_q);
+    // glm::vec2 on_r = closest_aabb_point_(q->_o, r);
+    // return r->collides(q->_o) || q->collides(on_r);
 }
 
 bool BVH::circ_circ_collider_(Circ* q, Circ* c) {
-    glm::vec2 diff = q->_o - c->_o;
     float r = q->_r + c->_r;
-    return glm::dot(diff, diff) < r * r;
+    glm::vec2 diff = q->_o - c->_o;
+    return glm::length2(diff) < r * r;
 }
 
 glm::vec2 BVH::closest_circ_point_(glm::vec2 o_, Circ* c) {
-    return c->_r * glm::normalize(o_ - c->_o);
+    return c->_r * glm::normalize(o_ - c->_o) + c->_o;
 }
 
 glm::vec2 BVH::closest_aabb_point_(glm::vec2 o_, Rect* r) {

@@ -22,9 +22,10 @@ void prewarm(float dt) {
 
 static void push_away(Dynamics& d, glm::vec2 collision) {
     glm::vec3 away(collision.x, 0, collision.y);
+    printf("%f %f\n", collision.x, collision.y);
 
     // move object out of collision with some buffer.
-    if (glm::dot(away, away) > 0.f) {
+    if (glm::length2(away) > 0.f) {
         d.pos += away + 0.001f * glm::normalize(away);
     }
 

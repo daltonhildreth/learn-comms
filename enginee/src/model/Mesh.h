@@ -38,7 +38,7 @@ public:
 
     virtual ~Mesh();
 
-    enum class Type { ANY, CUBE, LINE };
+    enum class Type { ANY, CUBE, LINE, CYLINDER };
     Type _type;
 
     // protected:

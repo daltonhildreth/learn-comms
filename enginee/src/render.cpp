@@ -209,7 +209,7 @@ glm::vec<2, int> create_context_window(
     if (is_record) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     }
-    glm::vec<2, int> size{min(640, mode0->width), min(480, mode0->height)};
+    glm::vec<2, int> size{min(500, mode0->width), min(500, mode0->height)};
     window = glfwCreateWindow(size.x, size.y, prog.c_str(), nullptr, nullptr);
     if (!window) {
         cerr << "gg! Failed to create window context.\n";
