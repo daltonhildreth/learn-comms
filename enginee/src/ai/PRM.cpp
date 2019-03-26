@@ -130,8 +130,23 @@ PRM::PRM(
 Cspace2d::Cspace2d(vector<BoundVolume*> obs, BoundVolume* agent) {
     _obstacles = vector<BoundVolume*>();
 
+    Rect a_bounds;
+    if (agent->_vt == BoundVolume::volume_type::CIRC) {
+        float r = static_cast<Circ*>(agent)->_r;
+        a_bounds = Rect(agent->_o, 2 * r, 2 * r);
+    } else {
+        a_bounds = *static_cast<Rect*>(agent);
+    }
+
     for (BoundVolume* o : obs) {
-        vector<BoundVolume*> ms = agent->minkowski_sum(o);
+        Rect o_bounds;
+        if (o->_vt == BoundVolume::volume_type::CIRC) {
+            float r = static_cast<Circ*>(o)->_r;
+            o_bounds = Rect(o->_o, 2 * r, 2 * r);
+        } else {
+            o_bounds = *static_cast<Rect*>(o);
+        }
+        vector<BoundVolume*> ms = a_bounds.minkowski_sum(&o_bounds);
         _obstacles.insert(_obstacles.end(), ms.begin(), ms.end());
     }
 }

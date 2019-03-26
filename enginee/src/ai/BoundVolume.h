@@ -78,3 +78,10 @@ public:
     std::vector<BoundVolume*> minkowski_sum_(Rect* b);
     std::vector<BoundVolume*> minkowski_sum_(Circ* b);
 };
+
+bool circ_rect_collider(Circ* q, Rect* r);
+bool rect_rect_collider(Rect* q, Rect* r);
+bool circ_circ_collider(Circ* q, Circ* c);
+
+glm::vec2 closest_circ_point(glm::vec2 o, Circ* c);
+glm::vec2 closest_aabb_point(glm::vec2 o, Rect* r);

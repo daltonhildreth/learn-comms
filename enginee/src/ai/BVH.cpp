@@ -78,25 +78,25 @@ void BVH::query_(Rect* q, std::vector<std::pair<Entity*, glm::vec2>>& NN) {
 
             if (bv->_vt == BoundVolume::volume_type::CIRC) {
                 Circ* bv_circ = static_cast<Circ*>(bv);
-                if (circ_rect_collider_(bv_circ, q)) {
-                    glm::vec2 on_q = closest_aabb_point_(bv->_o, q);
-                    glm::vec2 on_bv = closest_circ_point_(on_q, bv_circ);
+                if (circ_rect_collider(bv_circ, q)) {
+                    glm::vec2 on_q = closest_aabb_point(bv->_o, q);
+                    glm::vec2 on_bv = closest_circ_point(on_q, bv_circ);
                     // normal should push queried object out of collision
                     NN.push_back(std::make_pair(o, on_bv - on_q));
                 }
             } else {
                 Rect* bv_rect = static_cast<Rect*>(bv);
 
-                if (rect_rect_collider_(q, bv_rect)) {
-                    glm::vec2 on_q = closest_aabb_point_(bv->_o, q);
-                    glm::vec2 on_bv = closest_aabb_point_(on_q, bv_rect);
+                if (rect_rect_collider(q, bv_rect)) {
+                    glm::vec2 on_q = closest_aabb_point(bv->_o, q);
+                    glm::vec2 on_bv = closest_aabb_point(on_q, bv_rect);
                     // normal should push queried object out of collision
                     NN.push_back(std::make_pair(o, on_bv - on_q));
                 }
             }
         }
     } else {
-        if (rect_rect_collider_(q, &aabb)) {
+        if (rect_rect_collider(q, &aabb)) {
             left->query_(q, NN);
             right->query_(q, NN);
         }
@@ -112,71 +112,29 @@ void BVH::query_(Circ* q, std::vector<std::pair<Entity*, glm::vec2>>& NN) {
 
             if (bv->_vt == BoundVolume::volume_type::CIRC) {
                 Circ* bv_circ = static_cast<Circ*>(bv);
-                if (circ_circ_collider_(q, bv_circ)) {
-                    glm::vec2 on_q = closest_circ_point_(bv->_o, q);
-                    glm::vec2 on_bv = closest_circ_point_(on_q, bv_circ);
+                if (circ_circ_collider(q, bv_circ)) {
+                    glm::vec2 on_q = closest_circ_point(bv->_o, q);
+                    glm::vec2 on_bv = closest_circ_point(on_q, bv_circ);
                     // normal should push queried object out of collision
                     NN.push_back(std::make_pair(o, on_bv - on_q));
                 }
             } else {
                 Rect* bv_rect = static_cast<Rect*>(bv);
-                if (circ_rect_collider_(q, bv_rect)) {
+                if (circ_rect_collider(q, bv_rect)) {
                     // cross your fingers this isn't too expensive during LMP
-                    glm::vec2 on_q = closest_circ_point_(bv->_o, q);
-                    glm::vec2 on_bv = closest_aabb_point_(on_q, bv_rect);
+                    glm::vec2 on_q = closest_circ_point(bv->_o, q);
+                    glm::vec2 on_bv = closest_aabb_point(on_q, bv_rect);
                     // normal should push queried object out of collision
                     NN.push_back(std::make_pair(o, on_bv - on_q));
                 }
             }
         }
     } else {
-        if (circ_rect_collider_(q, &aabb)) {
+        if (circ_rect_collider(q, &aabb)) {
             left->query_(q, NN);
             right->query_(q, NN);
         }
     }
-}
-
-bool BVH::rect_rect_collider_(Rect* q, Rect* r) {
-    float w = q->_w + r->_w;
-    float h = q->_h + r->_h;
-    return Rect(r->_o, w, h).collides(q->_o);
-}
-
-bool BVH::circ_rect_collider_(Circ* q, Rect* r) {
-    glm::vec2 on_q = closest_circ_point_(r->_o, q);
-    return q->collides(r->_o) || r->collides(on_q);
-    // glm::vec2 on_r = closest_aabb_point_(q->_o, r);
-    // return r->collides(q->_o) || q->collides(on_r);
-}
-
-bool BVH::circ_circ_collider_(Circ* q, Circ* c) {
-    float r = q->_r + c->_r;
-    glm::vec2 diff = q->_o - c->_o;
-    return glm::length2(diff) < r * r;
-}
-
-glm::vec2 BVH::closest_circ_point_(glm::vec2 o_, Circ* c) {
-    return c->_r * glm::normalize(o_ - c->_o) + c->_o;
-}
-
-glm::vec2 BVH::closest_aabb_point_(glm::vec2 o_, Rect* r) {
-    // clamp in all axes to aabb dimensions
-    glm::vec2 closest = o_;
-    closest.x = glm::clamp(closest.x, r->_o.x - r->_w / 2, r->_o.x + r->_w / 2);
-    closest.y = glm::clamp(closest.y, r->_o.y - r->_h / 2, r->_o.y + r->_h / 2);
-
-    // will not change o if inside aabb, so we must clamp further to the edges
-    if (closest == o_) {
-        glm::vec2 o_in_r = o_ - r->_o;
-        if (std::abs(o_in_r.x) > std::abs(o_in_r.y)) {
-            closest.x = r->_o.x + (o_in_r.x > 0 ? +r->_w : -r->_w) / 2;
-        } else {
-            closest.y = r->_o.y + (o_in_r.y > 0 ? +r->_h : -r->_h) / 2;
-        }
-    }
-
-    return closest;
 }
 
 bool BVH::is_leaf() { return right == nullptr; }

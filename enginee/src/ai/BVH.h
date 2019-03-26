@@ -17,17 +17,6 @@ public:
 private:
     void query_(Rect* q, std::vector<std::pair<Entity*, glm::vec2>>& NN);
     void query_(Circ* q, std::vector<std::pair<Entity*, glm::vec2>>& NN);
-    // don't use, test later as the sqrt will probably make this slower
-    // this would be useful if it is faster, though, since circ/rect is common
-    // that would also mean I need to update my BV code.
-    bool circ_rect_collider_(Circ* q, Rect* r);
-
-    bool rect_rect_collider_(Rect* q, Rect* r);
-
-    bool circ_circ_collider_(Circ* q, Circ* c);
-
-    glm::vec2 closest_circ_point_(glm::vec2 o, Circ* c);
-    glm::vec2 closest_aabb_point_(glm::vec2 o, Rect* r);
 
 public:
     bool is_leaf();

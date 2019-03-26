@@ -135,10 +135,18 @@ glm::vec2 LMP::ttc_forces(
     BoundVolume& bvb,
     float ttc
 ) {
-    glm::vec2 V_dt(da.vel.x * ttc, da.vel.z * ttc);
+    glm::vec2 aV_dt(da.vel.x * ttc, da.vel.z * ttc);
     glm::vec2 bV_dt(db.vel.x * ttc, db.vel.z * ttc);
     // glm::vec2 perturb(0.000001, 0.000001);
-    glm::vec2 dir = (bva._o + V_dt - bvb._o - bV_dt); // +perturb);
+    glm::vec2 dir = (bva._o + aV_dt - (bvb._o + bV_dt)); // +perturb);
+    // if (bva._vt == BoundVolume::volume_type::CIRC) {
+    //    Circ future(bva._o + aV_dt, static_cast<Circ&>(bva)._r);
+    //    dir = closest_circ_point(bvb._o + bV_dt, &future);
+    //} else {
+    //    Rect future(bva._o + aV_dt, static_cast<Rect&>(bva)._w,
+    //    static_cast<Rect&>(bva)._h); dir = closest_aabb_point(bvb._o + bV_dt,
+    //    &future);
+    //}
     return ttc_forces_(ttc, dir);
 }
 

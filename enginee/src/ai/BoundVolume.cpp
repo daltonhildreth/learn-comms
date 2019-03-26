@@ -186,3 +186,45 @@ float Rect::intersect(glm::vec2 bo, glm::vec2 v) {
     }
     return tmin; // HIT
 }
+
+bool rect_rect_collider(Rect* q, Rect* r) {
+    float w = q->_w + r->_w;
+    float h = q->_h + r->_h;
+    return Rect(r->_o, w, h).collides(q->_o);
+}
+
+bool circ_rect_collider(Circ* q, Rect* r) {
+    glm::vec2 on_q = closest_circ_point(r->_o, q);
+    return q->collides(r->_o) || r->collides(on_q);
+    // glm::vec2 on_r = closest_aabb_point_(q->_o, r);
+    // return r->collides(q->_o) || q->collides(on_r);
+}
+
+bool circ_circ_collider(Circ* q, Circ* c) {
+    float r = q->_r + c->_r;
+    glm::vec2 diff = q->_o - c->_o;
+    return glm::length2(diff) < r * r;
+}
+
+glm::vec2 closest_circ_point(glm::vec2 o_, Circ* c) {
+    return c->_r * glm::normalize(o_ - c->_o) + c->_o;
+}
+
+glm::vec2 closest_aabb_point(glm::vec2 o_, Rect* r) {
+    // clamp in all axes to aabb dimensions
+    glm::vec2 closest = o_;
+    closest.x = glm::clamp(closest.x, r->_o.x - r->_w / 2, r->_o.x + r->_w / 2);
+    closest.y = glm::clamp(closest.y, r->_o.y - r->_h / 2, r->_o.y + r->_h / 2);
+
+    // will not change o if inside aabb, so we must clamp further to the edges
+    if (closest == o_) {
+        glm::vec2 o_in_r = o_ - r->_o;
+        if (std::abs(o_in_r.x) > std::abs(o_in_r.y)) {
+            closest.x = r->_o.x + (o_in_r.x > 0 ? +r->_w : -r->_w) / 2;
+        } else {
+            closest.y = r->_o.y + (o_in_r.y > 0 ? +r->_h : -r->_h) / 2;
+        }
+    }
+
+    return closest;
+}
