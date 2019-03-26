@@ -1,8 +1,8 @@
 ﻿#include "BoundVolume.h"
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/norm.hpp>
 #include <algorithm>
 #include <array>
+#include <glm/gtx/norm.hpp>
 
 Rect::Rect(): BoundVolume(glm::vec2(0, 0), volume_type::RECT), _w(0), _h(0) {}
 Rect::Rect(glm::vec2 o, float w, float h):
@@ -69,9 +69,7 @@ std::vector<BoundVolume*> Rect::minkowski_sum_(Circ* b) {
 }
 
 /// is p in circ?
-bool Circ::collides(glm::vec2 p) {
-    return glm::length2(p - _o) <= _r * _r;
-}
+bool Circ::collides(glm::vec2 p) { return glm::length2(p - _o) <= _r * _r; }
 
 /// does the line start + La_to_b * t {0<t<1} NOT intersect the circ?
 /// Real-Time collision detection (p179) by Christer Ericson

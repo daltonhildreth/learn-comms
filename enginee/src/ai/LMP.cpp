@@ -229,7 +229,7 @@ boid_speed;
 glm::vec2 LMP::calc_sum_force(
     Entity* e,
     BVH* static_bvh,
-    BVH* ,//dynamic_bvh,
+    BVH*, // dynamic_bvh,
     std::vector<Entity*>, // statics
     std::vector<Entity*> // dynamics) {
 ) {
@@ -256,7 +256,7 @@ glm::vec2 LMP::calc_sum_force(
 
     goal_F = 2.0f * (goal_vel - glm::vec2(d.vel.x, d.vel.z));
 
-    //float real_speed = glm::length(d.vel);
+    // float real_speed = glm::length(d.vel);
 
     /* ttc - approximate */
     glm::vec2 ttc_F(0);
@@ -266,22 +266,22 @@ glm::vec2 LMP::calc_sum_force(
     glm::vec2 vel2d(d.vel.x, d.vel.z);
     Circ q(bv._o, 2.f * static_cast<float>(TTC_THRESHOLD));
 
-    //auto NNdynamic = dynamic_bvh->query(&q);
-    //for (auto& nearby_query : NNdynamic) {
+    // auto NNdynamic = dynamic_bvh->query(&q);
+    // for (auto& nearby_query : NNdynamic) {
     POOL.for_<Agent>([&](Agent& b, Entity& nearby) {
-        //Entity* nearby = nearby_query.first;
-        //Agent* b = POOL.get<Agent>(*nearby);
+        // Entity* nearby = nearby_query.first;
+        // Agent* b = POOL.get<Agent>(*nearby);
         BoundVolume& bbv = **POOL.get<BoundVolume*>(nearby);
         Dynamics& bd = *POOL.get<Dynamics>(nearby);
         if (&a == &b) {
             // if the agents are the same, move on.
-            return;//continue
+            return; // continue
         }
         double ttc = LMP::ttc(
             bv, glm::vec2(d.vel.x, d.vel.z), bbv, glm::vec2(bd.vel.x, bd.vel.z)
         );
         if (ttc > TTC_THRESHOLD) { // seconds
-            return;//continue
+            return; // continue
         }
         ttc_F += LMP::ttc_forces(d, bv, bd, bbv, static_cast<float>(ttc));
     });

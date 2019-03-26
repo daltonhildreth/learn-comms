@@ -5,5 +5,9 @@
 // constructors vertices, normals, and texture coordinates
 class CylinderMesh: public Mesh {
 public:
-    CylinderMesh(std::vector<Texture>& texs, unsigned resolution=18, float radius=1.f);
+    CylinderMesh(
+        std::vector<Texture>& texs,
+        unsigned resolution = 18,
+        float radius = 1.f
+    );
 };

@@ -1,6 +1,8 @@
 #pragma once
+#include <string>
+
 namespace demo {
-void init(unsigned scn_i);
+void init(unsigned scn_i, std::string data_dir);
 bool run(double dt, double time, unsigned frame_count);
 void terminate();
 

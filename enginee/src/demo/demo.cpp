@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -20,6 +21,8 @@
 using namespace std;
 
 namespace demo {
+std::ofstream paths;
+
 template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 static glm::vec2 opposite_goal(glm::vec2 pos, unsigned) { return -pos; }
@@ -520,10 +523,10 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     uint16_t tid = POOL.create<Transform>(Transform(nullptr));
 #ifndef NO_RENDER
     uint16_t mid = POOL.create<Mesh>(CylinderMesh(texs, 18, .5f));
-    //uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
+    // uint16_t mid = POOL.create<Mesh>(CubeMesh(texs));
 #endif
     uint16_t did = POOL.create<Dynamics>(Dynamics());
-    //uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, s, s));
+    // uint16_t bvid = POOL.create<BoundVolume*>(new Rect(pos, s, s));
     uint16_t bvid = POOL.create<BoundVolume*>(new Circ(pos, s * .5f));
     uint16_t aid = POOL.create<Agent>(Agent());
 #ifndef NO_COMM
@@ -567,11 +570,12 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 #endif
 }
 
-void init(unsigned scn_i) {
+void init(unsigned scn_i, std::string data) {
     string pwd(PROJECT_SRC_DIR);
     // TODO: open buffer to {this_scene}/{mode}.paths
     // id, groupID, x, y, vx, vy, radius, timeSTAMP
 
+    paths = std::ofstream(data + "/agent_paths.nick", std::ios::binary);
     scn = make_scene(scn_i);
 
     // so, normally I'd only want one mesh shared amongst many entities, but the
@@ -624,13 +628,21 @@ bool run(double dt, double time, unsigned frame_count) {
     bool all_done = true;
     static double last_s = 0;
     float fake_time = static_cast<float>(dt) * static_cast<float>(frame_count);
-    POOL.for_<Agent>([&](Agent& ai, Entity&) {
+    POOL.for_<Agent>([&](Agent& ai, Entity& e) {
         if (!ai.done()) {
             all_done = false;
         } else if (!ai.overhead_counted) {
             update_runs(fake_time - ai.min_time);
             ai.overhead_counted = true;
         }
+        Dynamics& d = *POOL.get<Dynamics>(e);
+        Transform& t = *POOL.get<Transform>(e);
+        paths //
+            << e.id << ",0," //
+            << d.pos.x << "," << d.pos.z << "," //
+            << d.vel.x << "," << d.vel.z << "," //
+            << t.mat()[0][0] << "," //
+            << fake_time << "\n";
     });
     if (time - last_s >= 1) {
         std::clog << "NUM DONE: " << total_num_done << "\n";
@@ -655,5 +667,6 @@ void terminate() {
         if (bv)
             delete bv;
     });
+    paths.close();
 }
 } // namespace demo
