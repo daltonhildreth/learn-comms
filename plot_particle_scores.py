@@ -29,11 +29,11 @@ scn_colors = [
     "#AEC7E8" ##### l. blue
 ]
 
-kind = "mar5_0341_audio"#"mar5_1826_visual"#"mar6_1445_both"
-nits = 500#225
+kind = "mar27_1426_circ_audio_noiters"#"mar5_1826_visual"#"mar6_1445_both"
+nits = 225
 
 # separate plots
-fig, ax = plt.subplots(figsize=(6,6))#nrows=19, ncols=1, figsize=(3, 9))
+fig, ax = plt.subplots(figsize=(12,6))#nrows=19, ncols=1, figsize=(3, 9))
 #fig.tight_layout()
 #ax[0] = plt.subplot2grid((3, 20), (0, 0), colspan=20)
 #ax[1] = plt.subplot2grid((3, 20), (1, 0), colspan=9)
@@ -66,7 +66,7 @@ for plot in range(18 + 1):
         iqr += [math.log(abs(q2), 10)]
         max_c = max(max_c, iqr[-1])
         min_c = min(min_c, iqr[-1])
-    window = 3
+    window = 1
     for i in its[window:]:
         iqr[i] = np.mean(iqr[i-window:i+1])
 

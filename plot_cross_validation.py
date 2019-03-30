@@ -83,9 +83,7 @@ def read_cross_val(file):
 #
 #
 data = [
-    np.array(read_cross_val("data/mar5_0341_audio/cross_val.tsv")),
-    np.array(read_cross_val("data/mar5_1826_visual/cross_val.tsv")),
-    np.array(read_cross_val("data/mar6_1445_both/cross_val.tsv")),
+    np.array(read_cross_val("data/mar27_1426_circ_audio/cross_val.tsv")),
 ]
 
 #
@@ -129,7 +127,7 @@ fig = plt.figure(figsize=(6, 6))
 
 # normal cmap
 im0 = plt.imshow(
-    data[2],
+    data[0],
     interpolation="none",
     cmap=orig_cmap,
     norm=mcolors.LogNorm(vmax=10, vmin=.1),
@@ -147,7 +145,6 @@ plt.xticks(np.arange(0, 19, 1))
 plt.xlabel("Model")
 plt.yticks(np.arange(0, 19, 1))
 plt.ylabel("Test")
-plt.title("Audiovisual")
 
 # im1 = grid[1].imshow(
 #    data[1],

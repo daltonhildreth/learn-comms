@@ -34,9 +34,7 @@ fig.tight_layout()
 ax[0] = plt.subplot2grid((3, 20), (0, 0), colspan=20)
 ax[1] = plt.subplot2grid((3, 20), (1, 0), colspan=9)
 ax[2] = plt.subplot2grid((3, 20), (2, 0), colspan=9)
-for sub, kind in enumerate(
-    ["mar5_0341_audio", "mar5_1826_visual", "mar6_1445_both"]
-):
+for sub, kind in enumerate(["mar27_1426_circ_audio_noiters"]):
     # separate lines
     max_c = 0
     min_c = float('inf')

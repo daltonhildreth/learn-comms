@@ -49,7 +49,9 @@ def pretty_mat(np_m):
 
 
 class Particle:
-    def __init__(self, id_, min_config, max_config, scene_set, data_dir):
+    def __init__(
+        self, id_, min_config, max_config, scene_set, data_dir, baselines
+    ):
         self.id = id_
         # the baseline always gets 0
         self.iters = 1
@@ -57,6 +59,7 @@ class Particle:
         self.data_dir = data_dir
         # intentionally invalid, will be replaced at next minimize with self.pos
         self.local_min = Point()
+        self.baselines = baselines
 
         self.pos = Point(np.zeros(shape=M_SHAPE))
         for r in range(len(self.pos.config)):
@@ -124,6 +127,7 @@ class Particle:
             self.vel + self.pos.config,
             self.data_dir,
             "%d_p%d" % (self.iters, self.id),
+            lambda res: sum([r / self.baselines[i] for i, r in enumerate(res)]),
         )
         self.iters += 1
 
@@ -183,13 +187,13 @@ async def log_exec(prog, args, where):
             await p.wait()
 
 
-async def simulate_set(scene_set, config, data_dir, save_name):
+async def simulate_set(scene_set, config, data_dir, save_name, agg):
     sims = (
         simulate(scene, config, "%s/s%d_" % (data_dir, scene.id), save_name)
         for scene in scene_set
     )
     batch = await asyncio.gather(*sims, return_exceptions=True)
-    return sum(batch)
+    return agg(batch)
 
 
 async def simulate(scene, config, data_dir, save_name):
@@ -256,9 +260,10 @@ async def validate(run, model_id, scene):
 
 
 async def PSO(data_dir, scene_set, hypers):
-    baseline = await simulate_set(
-        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0)
+    baselines = await simulate_set(
+        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0), list
     )
+    baseline = sum(baselines)
 
     # initialize particles
     global_min = Point()
@@ -266,7 +271,7 @@ async def PSO(data_dir, scene_set, hypers):
     max_config = np.ones(shape=M_SHAPE)
     particles = []
     for p in range(hypers.n_particles):
-        p = Particle(p, min_config, max_config, scene_set, data_dir)
+        p = Particle(p, min_config, max_config, scene_set, data_dir, baselines)
         await p.kickstart()
         global_min = p.minimize(global_min)
         with open("data/%s/opt.log" % data_dir, "a") as trace:

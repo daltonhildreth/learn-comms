@@ -378,8 +378,8 @@ void draw() {
     if (is_record) {
         // glNamedFramebufferReadBuffer(fbo[back], GL_COLOR_ATTACHMENT0);
         glReadBuffer(GL_COLOR_ATTACHMENT0);
-        glReadPixels(0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, &video_buf[0]);
-        fwrite(video_buf, sizeof(int) * 640 * 480, 1, ffmpeg);
+        glReadPixels(0, 0, 500, 500, GL_RGBA, GL_UNSIGNED_BYTE, &video_buf[0]);
+        fwrite(video_buf, sizeof(int) * 500 * 500, 1, ffmpeg);
     }
     // double buffer
     glfwSwapBuffers(window);
