@@ -127,7 +127,7 @@ class Particle:
             self.vel + self.pos.config,
             self.data_dir,
             "%d_p%d" % (self.iters, self.id),
-            lambda res: sum([r / self.baselines[i] for i, r in enumerate(res)]),
+            lambda res: sum([r.norm(self.baselines[i]) for i, r in enumerate(res)]),
         )
         self.iters += 1
 
@@ -144,6 +144,9 @@ class Point:
         self.config = x
         self.score = y
         self.file = file
+
+    def norm(self, baseline):
+        return Point(self.config, self.score / baseline.score, self.file)
 
     def __add__(self, other):
         assert self.file == other.file
@@ -251,6 +254,7 @@ async def validate(run, model_id, scene):
 
     await record(scene, dst, False)
     b_result = read_result("data/%s/comms.result" % dst)
+    copyfile("data/%s/agent_paths.csv" % dst, "data/%s/b_agent_paths.csv")
     await record(scene, dst, True)
     result = read_result("data/%s/comms.result" % dst)
     dst = "data/" + dst
@@ -439,8 +443,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch", type=str, nargs="*", action="append")
     # not really str, only sometimes. Usually int... : a or int...
     parser.add_argument("--reload", type=str, nargs="*", action="append")
-    # parser.add_argument("--audio")
-    # parser.add_argument("--visual")
     args = parser.parse_args()
 
     all_scenes = list(range(0, 18 + 1))

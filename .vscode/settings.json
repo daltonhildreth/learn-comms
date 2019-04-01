@@ -8,4 +8,5 @@
       "80",
       "--py36",
     ],
+    "cmake.configureOnOpen": true,
   }

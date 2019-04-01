@@ -575,7 +575,7 @@ void init(unsigned scn_i, std::string data) {
     // TODO: open buffer to {this_scene}/{mode}.paths
     // id, groupID, x, y, vx, vy, radius, timeSTAMP
 
-    paths = std::ofstream(data + "/agent_paths.nick", std::ios::binary);
+    paths = std::ofstream(data + "/agent_paths.csv", std::ios::binary);
     scn = make_scene(scn_i);
 
     // so, normally I'd only want one mesh shared amongst many entities, but the
@@ -641,8 +641,9 @@ bool run(double dt, double time, unsigned frame_count) {
             << e.id << ",0," //
             << d.pos.x << "," << d.pos.z << "," //
             << d.vel.x << "," << d.vel.z << "," //
-            << t.mat()[0][0] << "," //
-            << fake_time << "\n";
+            << t.mat()[0][0] * .5f << "," // .5f for circles
+            << static_cast<float>(dt) * static_cast<float>(frame_count - 1) //
+            << "\n";
     });
     if (time - last_s >= 1) {
         std::clog << "NUM DONE: " << total_num_done << "\n";
