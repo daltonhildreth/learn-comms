@@ -241,7 +241,7 @@ glm::vec2 LMP::calc_sum_force(
     std::vector<Entity*>, // statics
     std::vector<Entity*> // dynamics) {
 ) {
-    float speed = 1.0f; // x m/s
+    const float speed = 1.0f; // x m/s
     glm::vec2 goal_vel;
     glm::vec2 goal_F(0);
 
@@ -262,7 +262,8 @@ glm::vec2 LMP::calc_sum_force(
         goal_vel = glm::vec2(0);
     }
 
-    goal_F = 2.0f * (goal_vel - glm::vec2(d.vel.x, d.vel.z));
+    const float k = 2.0f;
+    goal_F = k * (goal_vel - glm::vec2(d.vel.x, d.vel.z));
 
     // float real_speed = glm::length(d.vel);
 

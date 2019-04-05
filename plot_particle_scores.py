@@ -33,7 +33,7 @@ kind = "mar27_1426_circ_audio_noiters"#"mar5_1826_visual"#"mar6_1445_both"
 nits = 225
 
 # separate plots
-fig, ax = plt.subplots(figsize=(12,6))#nrows=19, ncols=1, figsize=(3, 9))
+fig, ax = plt.subplots(figsize=(9,6))#nrows=19, ncols=1, figsize=(3, 9))
 #fig.tight_layout()
 #ax[0] = plt.subplot2grid((3, 20), (0, 0), colspan=20)
 #ax[1] = plt.subplot2grid((3, 20), (1, 0), colspan=9)
@@ -44,13 +44,14 @@ fig, ax = plt.subplots(figsize=(12,6))#nrows=19, ncols=1, figsize=(3, 9))
 
 max_c = -float('inf')
 min_c = float('inf')
-for plot in range(18 + 1):
+for plot in [2, 4, 8, 9, 12, 13, 15, 18]:
     # separate lines
     particles = []
     its = np.arange(0, nits + 1, 1)
     for p in range(40):
         particles += [[]]
     with open("data/%s/t%d_train/opt_xrb" % (kind, plot), "r") as f:
+        # pos.score / base.score
         for p, line in enumerate(f):
             c = float(line.split()[-1])
             particles[p % 40] += [c]
@@ -76,11 +77,15 @@ for plot in range(18 + 1):
     c10 = (max_c - min_c) / 16.
     cr = np.arange(min_c, (max_c+c10), c10)
     ir = np.arange(its[window], its[-1]+25, 25)
-    ax.set_yticks(cr)
-    ax.set_yticklabels(["%.2f" % i for i in cr])
+    ax.set_yticks([])
+    ax.set_yticklabels(["%.3fx" % math.pow(10, i) for i in cr])
+    ax.set_ylabel(r"Minimum Particle "
+          r"$\hat{O}$")
     ax.set_xticks(ir)
-    ax.set_xticklabels(ir, rotation=90)
+    ax.set_xticklabels([i - 1 for i in ir], rotation=90)
+    ax.set_xlabel("Iteration")
     #ax.set_title("%d" % plot, loc="right", ha="left", va="top")
-ax.legend(['%d' % plot for plot in range(19)], loc = "right")
+ax.legend(["A","B","C","D","E","F","G","H"], loc="right")#['%d' % plot for plot in [2, 4, 8, 9, 12, 13, 15, 18]], loc = "right")
 
+plt.subplots_adjust(left=0.1, bottom=0.1, right=.98, top=.98, wspace=0, hspace=0)
 plt.show()

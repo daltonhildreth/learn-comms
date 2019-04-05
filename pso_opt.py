@@ -439,9 +439,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--iters", type=int, default=225)  # 300) # 450)
     parser.add_argument("--convergence", type=float, default=1e-9)
-    # not really str, only sometimes. Usually int... : a or int...
+    # not really str, only sometimes. Usually int... : (a or int...)
     parser.add_argument("--batch", type=str, nargs="*", action="append")
-    # not really str, only sometimes. Usually int... : a or int...
+    # not really str, only sometimes. Usually int...
     parser.add_argument("--reload", type=str, nargs="*", action="append")
     args = parser.parse_args()
 
