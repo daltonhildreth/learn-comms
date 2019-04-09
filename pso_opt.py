@@ -9,12 +9,13 @@ import argparse
 import numpy as np
 import asyncio
 
-M_SHAPE = (4, 7)  # FIXME: Change this TO 4, 9 if NORM_REL is defined
 N_COMM = 2
+# FIXME: Change this TO +7 if NORM_REL is defined
+M_SHAPE = (N_COMM+2, N_COMM+5)
 
 
 def write_config(file, config):
-    file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
+    #file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
     for i in range(0, M_SHAPE[0]):
         for j in range(0, M_SHAPE[1]):
             file.write(str(config[i][j]))

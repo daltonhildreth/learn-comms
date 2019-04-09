@@ -278,7 +278,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
     ui::add_handler(input_key);
     ui::add_handler(input_cursor);
     ui::add_handler(input_scroll);
-    comm_vis = Lab2rgb;
+    comm_vis = Lx_2rg_; // Lab2rgb;
 
     // build material
     mtl = unique_ptr<Shader>(new Shader());
@@ -363,7 +363,7 @@ void draw() {
 
         auto c = POOL.get<CommComp>(e);
         if (c) {
-            m._ambient = comm_vis(glm::vec3(.8, c->c));
+            m._ambient = comm_vis(glm::vec3(.8, c->c[0], 0));
         }
         // update models _and_ do glDraw; this combination seems to cause
         // issues.
