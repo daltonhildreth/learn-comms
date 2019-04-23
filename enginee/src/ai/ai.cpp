@@ -141,8 +141,8 @@ void update_agents() {
     });
 
     // probably very slow
-    delete static_bvh;
-    rebuild_sbvh(statics);
+    //delete static_bvh;
+    //rebuild_sbvh(statics);
     // TODO: fix PRM
 
     delete dynamic_bvh;

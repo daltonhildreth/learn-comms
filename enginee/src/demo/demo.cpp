@@ -507,6 +507,7 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     scale[3][3] = 1.f;
     t.set_mat(scale);
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
+    printf("%f %f\n", pos.x, pos.y);
 
     POOL.attach<Transform>(e, tid);
 #ifndef NO_RENDER

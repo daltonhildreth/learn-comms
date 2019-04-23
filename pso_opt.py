@@ -9,13 +9,12 @@ import argparse
 import numpy as np
 import asyncio
 
-N_COMM = 2
+N_COMM = 3
 # FIXME: Change this TO +7 if NORM_REL is defined
 M_SHAPE = (N_COMM+2, N_COMM+5)
 
 
 def write_config(file, config):
-    #file.write(str(M_SHAPE[0]) + " " + str(M_SHAPE[1]) + "\n")
     for i in range(0, M_SHAPE[0]):
         for j in range(0, M_SHAPE[1]):
             file.write(str(config[i][j]))
@@ -31,6 +30,8 @@ def read_result(result_file):
     def aggregate(result):
         # this limits the results to just Julio's time confidence metric
         _, confident_time = result
+        if np.isnan(confident_time) or confident_time > 1e99:
+            confident_time = 1e99
         return confident_time
 
     with open(result_file, "r") as f:
@@ -63,6 +64,7 @@ class Particle:
         self.baselines = baselines
 
         self.pos = Point(np.zeros(shape=M_SHAPE))
+
         for r in range(len(self.pos.config)):
             for c in range(len(self.pos.config[r])):
                 # Don't fill in values that are redundant to TTC
@@ -81,21 +83,22 @@ class Particle:
                 mag = abs(max_config[r][c] - min_config[r][c])
                 self.vel[r][c] = uniform(-mag, mag)
 
-    async def kickstart(self):
+    async def kickstart(self, build_dir):
         vel = self.vel
         self.vel = np.zeros(shape=M_SHAPE)
-        await self.attempt_move()
+        await self.attempt_move(build_dir)
         self.vel = vel
 
     def debug(self, trace, base, global_min):
         trace.write("\t\ti %s\n" % (self.iters - 1))
         trace.write("\t\tparticle id %s\n" % self.id)
         trace.write("\t\tprocess id %d\n" % getpid())
-        trace.write("xr %f\n" % self.pos.score)
-        trace.write("norm xr/b %f\n" % (self.pos.score / base.score))
+        trace.write("xr %f\n" % (self.pos.score * base.score))
+        trace.write("norm xr/b %f\n" % (self.pos.score))
         trace.write("Gf %s\n" % global_min.file)
-        trace.write("Gr %f\n" % global_min.score)
-        trace.write("norm xr/Gr %f\n" % (self.pos.score / global_min.score))
+        trace.write("Gr %f\n" % (global_min.score * base.score))
+        trace.write("norm Gr/b %f\n" % global_min.score)
+        trace.write("xr/Gr %f\n" % (self.pos.score / global_min.score))
         trace.write("xM\n%s\n" % pretty_mat(self.pos.config))
         trace.write("vM\n%s\n" % pretty_mat(self.vel))
         trace.write("gM\n%s\n" % pretty_mat(global_min.config))
@@ -122,13 +125,14 @@ class Particle:
 
         self.vel[r][c] = momentum + local_gravity + global_gravity
 
-    async def attempt_move(self):
+    async def attempt_move(self, build_dir):
         self.pos = await simulate_set(
             self.scene_set,
             self.vel + self.pos.config,
             self.data_dir,
             "%d_p%d" % (self.iters, self.id),
             lambda res: sum([r.norm(self.baselines[i]) for i, r in enumerate(res)]),
+            build_dir,
         )
         self.iters += 1
 
@@ -172,6 +176,7 @@ class HyperParameters:
         w_global,
         max_iters,
         max_convergence,
+        build_dir,
     ):
         self.n_particles = n_particles
         self.w_inertia = w_inertia
@@ -179,6 +184,7 @@ class HyperParameters:
         self.w_global = w_global
         self.max_iters = max_iters
         self.max_convergence = max_convergence
+        self.build_dir = build_dir
 
 
 async def log_exec(prog, args, where):
@@ -191,18 +197,18 @@ async def log_exec(prog, args, where):
             await p.wait()
 
 
-async def simulate_set(scene_set, config, data_dir, save_name, agg):
+async def simulate_set(scene_set, config, data_dir, save_name, agg, build_dir):
     sims = (
-        simulate(scene, config, "%s/s%d_" % (data_dir, scene.id), save_name)
+        simulate(scene, config, "%s/s%d_" % (data_dir, scene.id), save_name, build_dir)
         for scene in scene_set
     )
     batch = await asyncio.gather(*sims, return_exceptions=True)
     return agg(batch)
 
 
-async def simulate(scene, config, data_dir, save_name):
+async def simulate(scene, config, data_dir, save_name, build_dir):
     data_dir += "iters/"
-    prog = "build/bin/comm_norender"
+    prog = "%s/bin/comm_norender" % build_dir
     args = [scene.id, "--seed", scene.seed, "--data", data_dir]
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
@@ -228,15 +234,15 @@ async def simulate(scene, config, data_dir, save_name):
 SEMAPHORE = None
 
 
-async def record(scene, data_dir, with_comm):
-    prog = "build/bin/" + ("" if with_comm else "no") + "comm_render"
+async def record(scene, data_dir, with_comm, build_dir):
+    prog = ("%s/bin/" % build_dir) + ("" if with_comm else "no") + "comm_render"
     args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record"]
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
 
     try:
         async with SEMAPHORE:
-            await log_exec(prog, args, "%s/%d" % (data_dir, scene.id))
+            await log_exec(prog, args, "%s/%d_%d" % (data_dir, scene.id, with_comm))
     except RuntimeError:
         pass
 
@@ -247,16 +253,16 @@ async def hstack(left, right, out):
     await log_exec("ffmpeg", args, out)
 
 
-async def validate(run, model_id, scene):
+async def validate(run, model_id, scene, build_dir):
     src = "%s/t%d_min/" % (run, model_id)
     dst = src + "v%d" % scene.id
     makedirs("data/" + dst)
     copyfile("data/%s/comms.config" % src, "data/%s/comms.config" % dst)
 
-    await record(scene, dst, False)
+    await record(scene, dst, False, build_dir)
     b_result = read_result("data/%s/comms.result" % dst)
-    copyfile("data/%s/agent_paths.csv" % dst, "data/%s/b_agent_paths.csv")
-    await record(scene, dst, True)
+    copyfile("data/%s/agent_paths.csv" % dst, "data/%s/b_agent_paths.csv" % dst)
+    await record(scene, dst, True, build_dir)
     result = read_result("data/%s/comms.result" % dst)
     dst = "data/" + dst
     await hstack("%s/ttc.mp4" % dst, "%s/comm.mp4" % dst, "%s/split.mp4" % dst)
@@ -266,7 +272,7 @@ async def validate(run, model_id, scene):
 
 async def PSO(data_dir, scene_set, hypers):
     baselines = await simulate_set(
-        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0), list
+        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0), list, hypers.build_dir
     )
     baseline = sum(baselines)
 
@@ -276,8 +282,9 @@ async def PSO(data_dir, scene_set, hypers):
     max_config = np.ones(shape=M_SHAPE)
     particles = []
     for p in range(hypers.n_particles):
+        print("s0=%d i=1 p=%d" % (scene_set[0].id, p), end="\t")
         p = Particle(p, min_config, max_config, scene_set, data_dir, baselines)
-        await p.kickstart()
+        await p.kickstart(hypers.build_dir)
         global_min = p.minimize(global_min)
         with open("data/%s/opt.log" % data_dir, "a") as trace:
             p.debug(trace, baseline, global_min)
@@ -289,9 +296,10 @@ async def PSO(data_dir, scene_set, hypers):
 
     for i in range(hypers.max_iters):
         for p in particles:
+            print("s0=%d i=%d p=%d" % (scene_set[0].id, i+2, p.id), end="\t")
             # integrate particle swarm dynamics
             p.gravitate(global_min, hypers)
-            await p.attempt_move()
+            await p.attempt_move(hypers.build_dir)
 
             # update known minima
             global_min = p.minimize(global_min)
@@ -384,8 +392,8 @@ async def train(run_name, model_id, scene_set, meta_args):
     return ret
 
 
-async def cross_validate(name, model_id, test_set):
-    tests = (validate(name, model_id, scene) for scene in test_set)
+async def cross_validate(name, model_id, test_set, build_dir):
+    tests = (validate(name, model_id, scene, build_dir) for scene in test_set)
     cross_val = await asyncio.gather(*tests)
     with open("data/%s/t%d_min/cross_val.tsv" % (name, model_id), "a") as f:
         f.write("model_id\t%d\n" % model_id)
@@ -404,12 +412,14 @@ async def task_batch(args, model_id, batch, test_sets):
         args.w_global,
         args.iters,
         args.convergence,
+        args.program
     )
     model = await train(args.name, model_id, batch, hyper)
     cross_val = await cross_validate(
         args.name,
         model_id,
         [Scene(scene, args.seed) for scene in test_sets[model_id]],
+        args.program
     )
     return model, cross_val, True
 
@@ -444,9 +454,10 @@ if __name__ == "__main__":
     parser.add_argument("--batch", type=str, nargs="*", action="append")
     # not really str, only sometimes. Usually int...
     parser.add_argument("--reload", type=str, nargs="*", action="append")
+    parser.add_argument("--program", type=str)
     args = parser.parse_args()
 
-    all_scenes = list(range(0, 18 + 1))
+    all_scenes = [2,4,8,9,12,13,15,18]#list(range(0, 18 + 1))
 
     train_sets = []
     test_sets = []

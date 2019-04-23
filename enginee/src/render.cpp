@@ -264,7 +264,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
         // pipe frames to ffmpeg
         std::string cmd = "ffmpeg -r 60 -f rawvideo -pix_fmt rgba"
             " -s " + std::to_string(dims.x) + "x" + std::to_string(dims.y)
-            + " -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 17"
+            + " -i - -threads 1 -preset fast -y -pix_fmt yuv420p -crf 17"
             " -vf vflip " + data_dir + "/"
 #ifndef NO_COMM
             + "comm.mp4";

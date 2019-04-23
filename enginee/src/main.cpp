@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
     std::string data_dir = "";
     unsigned split_offset = 0;
     uint64_t seed = 0;
+    //unsigned c_func_id = comm::f_id::CLAMP;
 
     // register CLI positionals
     unsigned scene;
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
             {"data", cli::opt(nullptr, &data_dir, I(forward<string>), "dir")},
             {"split", cli::opt(nullptr, &split_offset, I(stoi), "n")},
             {"seed", cli::opt(nullptr, &seed, I(stoull), "n")},
+            //{"comm_func", cli::opt(nullptr, &c_func_id, I(stoull), "f")},
         },
         {cli::pos(scene, I(stoi), "scene")}
     );
@@ -72,7 +74,8 @@ int main(int argc, char** argv) {
     auto size = render::create_context_window(prog, split_offset);
 #endif
     demo::init(scene, data_dir);
-    comm::init(data_dir); // we still want to log times even on nocomm_render...
+    // we still want to log times even on nocomm_render...
+    comm::init(data_dir); //, c_func_id
     ai::init();
     physics::init();
 #ifndef NO_RENDER

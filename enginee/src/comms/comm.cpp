@@ -67,6 +67,7 @@ void init(std::string data_dir_) {
 
     std::stringstream ss(config_str);
     std::string line;
+
     for (int row = 0; row < NCOMM; ++row) {
         std::getline(ss, line, '\n');
         std::stringstream sl(line);
@@ -78,10 +79,8 @@ void init(std::string data_dir_) {
             std::getline(sl, item, ' ');
 #    if NCOMM != 1
             M_c[col][row] = std::stof(item);
-            printf("%f ", M_c[col][row]);
 #    else
             M_c = std::stof(item);
-            printf("%f ", M_c);
 #    endif
         }
 
@@ -92,12 +91,14 @@ void init(std::string data_dir_) {
         std::array<vecc*, 5> M_v = {&M_vy, &M_s, &M_py, &M_d, &M_g};
 #    endif
         // (M_vx;) M_vy; M_s; (M_px;) M_py; M_d; M_g
-        for (int col = 0; col < static_cast<int>(M_v.size()); ++col) {
+#    ifdef NORM_REL
+        for (col = 0; col < 7; ++col) {
+#    else
+        for (col = 0; col < 5; ++col) {
+#    endif
             std::getline(sl, item, ' ');
-            (*M_v[col])[row] = std::stof(item);
-            printf("%f ", (*M_v[col])[row]);
+            (*M_v[static_cast<size_t>(col)])[row] = std::stof(item);
         }
-        printf("\n");
     }
 
     // Fill in M_f
@@ -109,13 +110,10 @@ void init(std::string data_dir_) {
             std::getline(sl, item, ' ');
 #    if NCOMM != 1
             M_f[col][row] = std::stof(item);
-            printf("%f ", M_f[col][row]);
 #    else
             M_f[row] = std::stof(item);
-            printf("%f ", M_f[row]);
 #    endif
         }
-        printf("\n");
     }
 #endif
 }

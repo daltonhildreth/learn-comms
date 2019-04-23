@@ -62,14 +62,21 @@ float LMP::ttc_(Rect& i, glm::vec2 iv, Rect& j, glm::vec2 jv) {
 }
 
 float LMP::ttc_(Circ& i, glm::vec2 iv, Rect& j, glm::vec2 jv) {
-    std::vector<BoundVolume*> ms = j.minkowski_sum(&i);
+    Rect h(j._o, 2 * i._r + j._w, j._h);
+    Rect v(j._o, j._w, 2 * i._r + j._h);
+    Circ tr(glm::vec2(j._o.x + j._w / 2, j._o.y + j._h / 2), i._r);
+    Circ tl(glm::vec2(j._o.x - j._w / 2, j._o.y + j._h / 2), i._r);
+    Circ br(glm::vec2(j._o.x + j._w / 2, j._o.y - j._h / 2), i._r);
+    Circ bl(glm::vec2(j._o.x - j._w / 2, j._o.y - j._h / 2), i._r);
+
+    std::array<BoundVolume*, 6> ms{&h, &v, &tr, &tl, &br, &bl};
+
     float t_min = std::numeric_limits<float>::max();
-    glm::vec2 dv = jv - iv;
+    glm::vec2 dv = iv - jv;
     for (BoundVolume* bv : ms) {
-        float t = bv->intersect(j._o, dv);
+        float t = bv->intersect(i._o, dv);
         if (t < t_min)
             t_min = t;
-        delete bv;
     }
     return t_min;
 }
@@ -236,9 +243,9 @@ boid_speed;
 
 glm::vec2 LMP::calc_sum_force(
     Entity* e,
-    BVH* static_bvh,
+    BVH*,
     BVH*, // dynamic_bvh,
-    std::vector<Entity*>, // statics
+    std::vector<Entity*> statics,
     std::vector<Entity*> // dynamics) {
 ) {
     const float speed = 1.0f; // x m/s
@@ -273,7 +280,8 @@ glm::vec2 LMP::calc_sum_force(
     // have to replace this circle with an extrusion or cone. ... or a shifted
     // circle! this works pretty damn well! 1000 Agents at 30FPS!! :D
     glm::vec2 vel2d(d.vel.x, d.vel.z);
-    Circ q(bv._o, 2.f * static_cast<float>(TTC_THRESHOLD));
+    //float sz = 2.f * static_cast<float>(TTC_THRESHOLD);
+    //Rect q(bv._o, sz, sz);
 
     // auto NNdynamic = dynamic_bvh->query(&q);
     // for (auto& nearby_query : NNdynamic) {
@@ -295,10 +303,13 @@ glm::vec2 LMP::calc_sum_force(
         ttc_F += LMP::ttc_forces(d, bv, bd, bbv, static_cast<float>(ttc));
     });
 
-    auto NNstatic = static_bvh->query(&q);
-    for (auto& nearby_query : NNstatic) {
-        Entity* nearby = nearby_query.first;
+    //auto NNstatic = static_bvh->query(&q);
+    for (Entity* nearby : statics) {
+        //Entity* nearby = nearby_query.first;
         BoundVolume& bbv = **POOL.get<BoundVolume*>(*nearby);
+        if (glm::length2(bbv._o - glm::vec2(d.pos.x, d.pos.z)) > TTC_THRESHOLD) {
+            continue;
+        }
         double ttc =
             LMP::ttc(bv, glm::vec2(d.vel.x, d.vel.z), bbv, glm::vec2(0));
         if (ttc > TTC_THRESHOLD) { // seconds

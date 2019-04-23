@@ -1,7 +1,7 @@
 #include "CylinderMesh.h"
 #include <glm/gtc/constants.hpp>
 
-const std::vector<Vertex> _verts(unsigned resolution, float radius) {
+static const std::vector<Vertex> _verts(unsigned resolution, float radius) {
     std::vector<Vertex> vertices;
     // bottom center // -0
     vertices.push_back(Vertex{{0, 0, 0}, {0, -1, 0}, {0.5, 0.5}});
@@ -10,7 +10,7 @@ const std::vector<Vertex> _verts(unsigned resolution, float radius) {
 
     for (unsigned i = 0; i < resolution; ++i) {
         float elem = 1 / static_cast<float>(resolution);
-        float ratio = i * elem;
+        float ratio = static_cast<float>(i) * elem;
         float pi2 = 2.f * glm::pi<float>();
         float angle = ratio * pi2;
         float nx = std::cos(angle);
@@ -19,7 +19,7 @@ const std::vector<Vertex> _verts(unsigned resolution, float radius) {
         float y = radius * ny;
 
         for (int h = 0; h <= 1; ++h) {
-            float side = h * 2 - 1;
+            float side = static_cast<float>(h) * 2.f - 1.f;
 
             glm::vec3 vec{x, h, y};
             // cap
@@ -27,7 +27,7 @@ const std::vector<Vertex> _verts(unsigned resolution, float radius) {
             vertices.push_back(Vertex{
                 vec,
                 {0, side, 0},
-                {side * x / 2 + 1, side * y / 2 + 1},
+                {side * x * .5f + 1.f, side * y * .5f + 1.f},
             });
 
             // wall
@@ -45,7 +45,7 @@ const std::vector<Vertex> _verts(unsigned resolution, float radius) {
     }
     return vertices;
 }
-const std::vector<GLuint> _idxs(unsigned resolution) {
+static const std::vector<GLuint> _idxs(unsigned resolution) {
     std::vector<GLuint> indices;
     unsigned verts_sz = 6 * resolution;
     indices.reserve(3 * 4 * resolution);
