@@ -27,6 +27,7 @@ float cam_dist = 1.f;
 GLFWwindow* window;
 
 bool is_record = false;
+unsigned comm_vis_f = VisF::XYZ2LAB;
 static GLuint fbo;
 static GLuint rbo[2];
 static int* video_buf;
@@ -83,19 +84,32 @@ GLuint create_tex(std::string path) {
     return tex;
 }
 
-static glm::vec3 uv2rgb(glm::vec3 Luv) {
+static glm::vec3 xyz2(glm::vec3 xyz) {
+    float pi = glm::pi<float>();
+    glm::vec2 r = glm::vec2(std::cos(2 * pi / 3), std::sin(2 * pi / 3));
+    glm::vec2 g = glm::vec2(std::cos(4 * pi / 3), std::sin(4 * pi / 3));
+    glm::vec2 b = glm::vec2(std::cos(2 * pi), std::sin(pi));
+    float A = r.x * xyz.x + g.x * xyz.y + b.x * xyz.b;
+    float B = r.y * xyz.x + g.y * xyz.y + b.y * xyz.b;
+    float L = sqrt(glm::length(xyz) / glm::length(glm::vec3(1)));
+    return glm::vec3(L, A, B);
+}
+
+static glm::vec3 Luv2rgb(glm::vec3 Luv) {
     glm::vec3 rgb = {
         // Here the 0.5 in each equation is just the desired
         // luminance Y, you can play with it
-        +0.000 * Luv[0] + 1.140 * Luv[1],
-        -0.395 * Luv[0] - 0.581 * Luv[1],
-        +2.032 * Luv[0] + 0.000 * Luv[1],
+        +0.000 * Luv[1] + 1.140 * Luv[2],
+        -0.395 * Luv[1] - 0.581 * Luv[2],
+        +2.032 * Luv[1] + 0.000 * Luv[2],
     };
     rgb += Luv[0];
 
     // Clamp the results to 0 to 1
     return glm::max(glm::vec3(0.f), glm::min(glm::vec3(1.f), rgb));
 }
+
+static glm::vec3 xyz2Luv(glm::vec3 xyz) { return Luv2rgb(xyz2(xyz)); }
 
 static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     // https://www.easyrgb.com/en/math.php
@@ -140,14 +154,21 @@ static glm::vec3 Lab2rgb(glm::vec3 Lab) {
     return rgb;
 }
 
-static glm::vec3 Lx_2rg_(glm::vec3 Lx_) {
-    float x = Lx_[1];
+static glm::vec3 xyz2Lab(glm::vec3 xyz) { return Lab2rgb(xyz2(xyz)); }
+
+static glm::vec3 x__2gr(glm::vec3 x__) {
+    float x = x__[0];
     return x < 0 ? glm::vec3(-x, 0, 0) : glm::vec3(0, x, 0);
 }
 
-static glm::vec3 L_y2_gb(glm::vec3 L_y) {
-    float y = L_y[2];
-    return y < 0 ? glm::vec3(0, 0, -y) : glm::vec3(0, y, 0);
+static glm::vec3 _y_2gr(glm::vec3 _y_) {
+    float y = _y_[1];
+    return y < 0 ? glm::vec3(-y, 0, 0) : glm::vec3(0, y, 0);
+}
+
+static glm::vec3 __z2gr(glm::vec3 __z) {
+    float z = __z[2];
+    return z < 0 ? glm::vec3(-z, 0, 0) : glm::vec3(0, z, 0);
 }
 
 static void _glfw_error(int err, const char* msg) {
@@ -278,7 +299,14 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
     ui::add_handler(input_key);
     ui::add_handler(input_cursor);
     ui::add_handler(input_scroll);
-    comm_vis = Lx_2rg_; // Lab2rgb;
+
+    switch (comm_vis_f) {
+    case VisF::X2RG: comm_vis = x__2gr; break;
+    case VisF::Y2RG: comm_vis = _y_2gr; break;
+    case VisF::Z2RG: comm_vis = __z2gr; break;
+    case VisF::XYZ2LUV: comm_vis = xyz2Luv; break;
+    case VisF::XYZ2LAB: comm_vis = xyz2Lab; break;
+    }
 
     // build material
     mtl = unique_ptr<Shader>(new Shader());
@@ -294,7 +322,7 @@ void init(glm::vec<2, int> dims, std::string data_dir) {
             // LineMesh& l = m;
             m.set_material(mtl.get(), 0, glm::vec3(0, 100, 0));
         } else {
-            m.set_material(mtl.get(), 0);
+            m.set_material(mtl.get(), 0, m._ambient);
         }
         // TODO:
         //.material(Material(
@@ -363,8 +391,9 @@ void draw() {
 
         auto c = POOL.get<CommComp>(e);
         if (c) {
-            m._ambient = comm_vis(glm::vec3(.8, c->c[0], 0));
+            m._ambient = comm_vis(c->c);
         }
+
         // update models _and_ do glDraw; this combination seems to cause
         // issues.
         if (m._type == Mesh::Type::LINE) {
@@ -437,14 +466,16 @@ void input_key(GLFWwindow* w, double ddt) {
             glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
-    if (ui::edge_up(GLFW_KEY_0)) {
-        comm_vis = uv2rgb;
-    } else if (ui::edge_up(GLFW_KEY_1)) {
-        comm_vis = Lab2rgb;
+    if (ui::edge_up(GLFW_KEY_1)) {
+        comm_vis = xyz2Lab;
     } else if (ui::edge_up(GLFW_KEY_2)) {
-        comm_vis = Lx_2rg_;
+        comm_vis = x__2gr;
     } else if (ui::edge_up(GLFW_KEY_3)) {
-        comm_vis = L_y2_gb;
+        comm_vis = _y_2gr;
+    } else if (ui::edge_up(GLFW_KEY_4)) {
+        comm_vis = __z2gr;
+    } else if (ui::edge_up(GLFW_KEY_5)) {
+        comm_vis = xyz2Luv;
     }
 }
 

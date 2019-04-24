@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     std::string data_dir = "";
     unsigned split_offset = 0;
     uint64_t seed = 0;
-    //unsigned c_func_id = comm::f_id::CLAMP;
+    // unsigned c_func_id = comm::f_id::CLAMP;
 
     // register CLI positionals
     unsigned scene;
@@ -55,10 +55,11 @@ int main(int argc, char** argv) {
         argv,
         {
             {"help", cli::opt(nullptr)}, // uses hack
-            {"record", cli::opt(&render::is_record)},
+            {"record",
+             cli::opt(&render::is_record, &render::comm_vis_f, I(stoi), "u")},
             {"data", cli::opt(nullptr, &data_dir, I(forward<string>), "dir")},
             {"split", cli::opt(nullptr, &split_offset, I(stoi), "n")},
-            {"seed", cli::opt(nullptr, &seed, I(stoull), "n")},
+            {"seed", cli::opt(nullptr, &seed, I(stoull), "u")},
             //{"comm_func", cli::opt(nullptr, &c_func_id, I(stoull), "f")},
         },
         {cli::pos(scene, I(stoi), "scene")}

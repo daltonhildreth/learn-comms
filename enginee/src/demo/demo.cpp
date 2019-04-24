@@ -507,7 +507,6 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     scale[3][3] = 1.f;
     t.set_mat(scale);
     t.set_pos(glm::vec3(pos.x, 0, pos.y));
-    printf("%f %f\n", pos.x, pos.y);
 
     POOL.attach<Transform>(e, tid);
 #ifndef NO_RENDER
@@ -518,6 +517,7 @@ static void create_wall(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 
 static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     float s = .3f;
+    float outline_percent = .25f;
 #ifdef NO_RENDER
     UNUSED(texs);
 #endif
@@ -535,7 +535,7 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 #endif
 
     auto& t = *POOL.get<Transform>(tid);
-    glm::mat4 scale(s);
+    glm::mat4 scale((1.f - outline_percent) * s);
     scale[1][1] = 1.f;
     scale[3][3] = 1.f;
     t.set_mat(scale);
@@ -568,6 +568,22 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
     POOL.attach<Agent>(e, aid);
 #ifndef NO_COMM
     POOL.attach<CommComp>(e, cid);
+#endif
+
+#ifndef NO_RENDER
+    Entity& outline = POOL.spawn_entity();
+    tid = POOL.create<Transform>(Transform(&t));
+    auto& ot = *POOL.get<Transform>(tid);
+    glm::mat4 line_scale(1.f / (1.f - outline_percent));
+    line_scale[1][1] = .9f;
+    line_scale[3][3] = 1.f;
+    ot.set_mat(line_scale);
+    vector<Texture> blank{};
+    mid = POOL.create<Mesh>(CylinderMesh(blank, 18, .5f));
+    auto& m = *POOL.get<Mesh>(mid);
+    m._ambient = glm::vec3(0.f);
+    POOL.attach<Transform>(outline, tid);
+    POOL.attach<Mesh>(outline, mid);
 #endif
 }
 

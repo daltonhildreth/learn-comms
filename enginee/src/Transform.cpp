@@ -27,7 +27,7 @@ mat4 Transform::global_mat() const {
         return _transform;
     }
 
-    return _transform * _parent->global_mat();
+    return _parent->global_mat() * _transform;
 }
 
 void Transform::set_global_mat(mat4 gm) {
@@ -36,7 +36,7 @@ void Transform::set_global_mat(mat4 gm) {
         _transform = gm;
     }
 
-    _transform = gm * inverse(_parent->global_mat());
+    _transform = inverse(_parent->global_mat()) * gm;
 }
 
 // void wrt_mat(int num_up);
