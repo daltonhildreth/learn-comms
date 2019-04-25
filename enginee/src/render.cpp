@@ -391,7 +391,7 @@ void draw() {
 
         auto c = POOL.get<CommComp>(e);
         if (c) {
-            m._ambient = comm_vis(c->c);
+            m._ambient = comm_vis(glm::vec3(c->c[0], c->c[1], c->c[2]));
         }
 
         // update models _and_ do glDraw; this combination seems to cause

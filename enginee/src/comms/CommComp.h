@@ -1,4 +1,5 @@
 #pragma once
+#include <Eigen/Dense>
 #include <array>
 #include <cmath>
 #include <glm/gtc/constants.hpp>
@@ -6,7 +7,7 @@
 
 namespace comm {
 #define NCOMM 3
-typedef glm::vec<NCOMM, float> vecc;
+typedef Eigen::Matrix<float, NCOMM, 1> vecc;
 } // namespace comm
 
 struct CommComp {
@@ -14,11 +15,11 @@ struct CommComp {
     comm::vecc c_buf;
     glm::vec2 f_buf;
     glm::vec2 facing;
-    void buf_in(comm::vecc c_prime, glm::vec2 f_prime) {
+    void buf_in(comm::vecc c_prime, Eigen::Vector2f f_prime) {
         // distributed non-linearity
         for (int i = 0; i < NCOMM; ++i) {
             // const float y = .5f;
-            const float b = .5f;
+            // const float b = .5f;
             const float x = c_prime[i]; // y
             c_buf[i] =
                 // atan "wrong"
@@ -31,7 +32,7 @@ struct CommComp {
                 // remove two's to make 0..1
                 // glm::one_over_pi<float>() * std::atan(glm::pi<float>() * x);
                 // ISRU (multiply denom x by 4 for 0..1)
-                x / std::sqrt(1.f + 4.f * x * x);
+                x / std::sqrt(1.f + x * x);
             // Soft.... ?
             // 4.f * x / (4.f + x * x);
             // clamp
@@ -44,7 +45,7 @@ struct CommComp {
             // x / std::pow(1.f + std::pow(std::fabs(x), p)), 1.f/p);
 
             // c_buf[i] *= y;
-            c_buf[i] += b;
+            // c_buf[i] += b;
         }
 
         // max force

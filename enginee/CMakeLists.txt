@@ -96,7 +96,7 @@ foreach(CONFIG nocomm_norender nocomm_render comm_norender comm_render)
     target_include_directories(
         ${CONFIG}
         SYSTEM PUBLIC
-        lib/glad/ lib/glfw/include/ lib/glm/ lib/
+        lib/glad/ lib/glfw/include/ lib/glm/ lib/eigen/ lib/
     )
 endforeach(CONFIG)
 

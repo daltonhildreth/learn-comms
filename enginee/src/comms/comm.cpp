@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #define GLM_ENABLE_EXPERIMENTAL
+#include <Eigen/Dense>
 #include <glm/gtx/norm.hpp>
 
 namespace comm {
@@ -18,7 +19,7 @@ namespace comm {
 // g / (1 + g)
 #define SOFTSIGN_GOAL
 
-// one (c+2)x(c+(5 or 7)) split into multiple for easy multiplication
+// one (c+2)x(c+(5 or 7)) split into multiple for easy multiplication w/ glm
 //     +
 //   c c v v v v v
 // + c c v v v v v
@@ -33,11 +34,7 @@ namespace comm {
 //   M_f = 2xc
 //
 
-#if NCOMM != 1
-glm::mat<NCOMM, NCOMM, float> M_c; // c input/output
-#else
-float M_c;
-#endif
+Eigen::Matrix<float, NCOMM, NCOMM> M_c; // c input/output
 
 #ifdef NORM_REL
 vecc M_vx; // relative velocity input
@@ -51,11 +48,7 @@ vecc M_py; // relative position input
 vecc M_d; // distance of the relative position of neighbor
 vecc M_g; // goal distance input
 
-#if NCOMM != 1
-glm::mat<NCOMM, 2, float> M_f;
-#else
-glm::vec2 M_f;
-#endif
+Eigen::Matrix<float, 2, NCOMM> M_f;
 
 std::string data_dir;
 
@@ -77,11 +70,7 @@ void init(std::string data_dir_) {
         int col = 0;
         for (; col < NCOMM; ++col) {
             std::getline(sl, item, ' ');
-#    if NCOMM != 1
-            M_c[col][row] = std::stof(item);
-#    else
-            M_c = std::stof(item);
-#    endif
+            M_c(row, col) = std::stof(item);
         }
 
 #    ifdef NORM_REL
@@ -97,7 +86,7 @@ void init(std::string data_dir_) {
         for (col = 0; col < 5; ++col) {
 #    endif
             std::getline(sl, item, ' ');
-            (*M_v[static_cast<size_t>(col)])[row] = std::stof(item);
+            (*M_v[static_cast<size_t>(col)])(row) = std::stof(item);
         }
     }
 
@@ -108,11 +97,7 @@ void init(std::string data_dir_) {
         std::string item;
         for (int col = 0; col < NCOMM; ++col) {
             std::getline(sl, item, ' ');
-#    if NCOMM != 1
-            M_f[col][row] = std::stof(item);
-#    else
-            M_f[row] = std::stof(item);
-#    endif
+            M_f(row, col) = std::stof(item);
         }
     }
 #endif
@@ -132,7 +117,7 @@ void run() {
         // silent, not moving, and not distant.
         glm::vec2 closest_pos{0};
         glm::vec2 closest_vel{0};
-        vecc closest_c{0};
+        vecc closest_c = vecc::Zero();
         Dynamics& d = *POOL.get<Dynamics>(e_c);
         float min_dist2 = std::numeric_limits<float>::max();
 

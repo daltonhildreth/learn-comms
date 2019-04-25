@@ -236,7 +236,7 @@ SEMAPHORE = None
 
 async def record(scene, data_dir, with_comm, build_dir):
     prog = ("%s/bin/" % build_dir) + ("" if with_comm else "no") + "comm_render"
-    args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record"]
+    args = [scene.id, "--seed", scene.seed, "--data", data_dir, "--record", 0]
     args = [str(i) for i in args]
     data_dir = "data/" + data_dir
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2016-2018 Dalton Hildreth
 # This file is under the MIT license. See the LICENSE file for details.
+set -exuo
 
 printf "%-45s" "Removing old 3rd-party libs..."
 {
@@ -56,6 +57,11 @@ printf "%-45s" "Downloading latest version of stb_image.h..."
     # mv stb/stb_image_write.h .
     rm -rf stb
 } &> /dev/null
+printf "%15s\n" "Done."
+
+# Refresh Eigen3
+printf "%-45s" "Downloading latest version of Eigen v3..."
+git clone --depth=1 --single-branch -b branches/3.0 https://github.com/eigenteam/eigen-git-mirror.git eigen &> /dev/null
 printf "%15s\n" "Done."
 
 #Remove the git histories. (unneeded)

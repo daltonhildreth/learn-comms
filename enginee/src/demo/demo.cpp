@@ -8,6 +8,7 @@
 #include "util/Seeder.h"
 #include "util/debug.h"
 
+#include <Eigen/Dense>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -553,8 +554,8 @@ static void create_robo(Entity& e, vector<Texture> texs, glm::vec2 pos) {
 
 #ifndef NO_COMM
     auto& c = *POOL.get<CommComp>(cid);
-    c.c = comm::vecc(0);
-    c.c_buf = comm::vecc(0);
+    c.c = comm::vecc::Zero();
+    c.c_buf = comm::vecc::Zero();
     c.f_buf = glm::vec2(0);
     c.facing = a.final_goal - a.start;
 #endif
