@@ -10,10 +10,11 @@
 #include <glm/gtx/norm.hpp>
 
 namespace comm {
+// x,y = default
 // x,y + mag
 // #define NORM_REL
 // y + mag
-#define COSINE_REL // NOT AT THE SAME TIME AS NORM_REL (which requires a 4x9 M)
+#define COSINE_REL // NOT AT THE SAME TIME AS NORM_REL
 // 1 / p_mag
 #define PROX // with either rel, not by itself
 // g / (1 + |g|) (but g is always >0 so g/(1 + g))
@@ -34,18 +35,30 @@ namespace comm {
 //   M_f = 2xc
 //
 
+#ifdef NORM_REL
+const unsigned N_INPUT = NCOMM + 7;
+#else
+const unsigned N_INPUT = NCOMM + 5;
+#endif
+
+Eigen::Matrix<float, NCOMM, N_INPUT> M_cv;
+
 Eigen::Matrix<float, NCOMM, NCOMM> M_c; // c input/output
 
-#ifdef NORM_REL
+#if defined(NORM_REL) || !defined(COSINE_REL)
 vecc M_vx; // relative velocity input
 #endif
 vecc M_vy; // relative velocity input
+#ifdef COSINE_REL
 vecc M_s; // magnitude of the relative velocity
-#ifdef NORM_REL
+#endif
+#if defined(NORM_REL) || !defined(COSINE_REL)
 vecc M_px; // relative position input
 #endif
 vecc M_py; // relative position input
+#ifdef COSINE_REL
 vecc M_d; // distance of the relative position of neighbor
+#endif
 vecc M_g; // goal distance input
 
 Eigen::Matrix<float, 2, NCOMM> M_f;
@@ -100,8 +113,16 @@ void init(std::string data_dir_) {
             M_f(row, col) = std::stof(item);
         }
     }
+
+#    if defined(NORM_REL)
+    M_cv << M_vx, M_vy, M_s, M_px, M_py, M_d, M_g;
+#    elif defined(COSINE_REL)
+    M_cv << M_vy, M_s, M_py, M_d, M_g;
+#    else
+M_cv << M_vx, M_vy, M_px, M_py, M_g;
+#    endif
 #endif
-}
+} // namespace comm
 
 void terminate() {
     std::ofstream results;
@@ -111,7 +132,7 @@ void terminate() {
     results.close();
 }
 
-std::array<float, 7> x(
+static Eigen::Matrix<float, N_INPUT, 1> x(
     Agent& a,
     CommComp& c,
     Dynamics& d,
@@ -148,28 +169,42 @@ std::array<float, 7> x(
     g /= 1 + g;
 #endif
 
-    return {rel_v.x, rel_v.y, mag_rv, rel_p.x, rel_p.y, mag_rp, g};
+    Eigen::Matrix<float, N_INPUT, 1> x;
+    x <<
+#if defined(NORM_REL)
+        c.c,
+        rel_v, mag_rv, rel_p, mag_rp, g;
+#elif defined(COSINE_REL)
+        c.c,
+        rel_v.y, mag_rv, rel_p.y, mag_rp, g;
+#else
+        c.c,
+        rel_v, rel_p, g;
+#endif
+    return x;
 }
 
 // template <size_t K>
 // std::array<Entity*, K> KNN(Entity& i) {
-Entity* NN(Entity& i) {
+static Entity* loudest(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
     glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
-    float min_dist2 = std::numeric_limits<float>::max();
+    float max_volume2 = std::numeric_limits<float>::min();
     Entity* closest = nullptr;
 
     // this is *really* inefficient, but oh well.
-    POOL.for_<CommComp>([&](CommComp&, Entity& j) {
+    POOL.for_<CommComp>([&](CommComp& c_j, Entity& j) {
         if (i.id == j.id)
             return;
+
         Dynamics& d_j = *POOL.get<Dynamics>(j);
         glm::vec2 p_j = glm::vec2(d_j.pos.x, d_j.pos.z);
 
         glm::vec2 diff = p_j - p_i;
-        float dist2 = glm::length2(diff);
-        if (dist2 < min_dist2) {
-            min_dist2 = dist2;
+        vecc atten = c_j.c / glm::length2(diff);
+        float volume2 = atten.sum();
+        if (volume2 > max_volume2) {
+            max_volume2 = volume2;
             closest = &j;
         }
     });
@@ -180,52 +215,21 @@ void run() {
     POOL.for_<CommComp>([&](CommComp& c_i, Entity& i) {
         // if, for some reason, a nearest neighbor is not found, treat them as
         // silent, not moving, and not distant.
-        // glm::vec2 closest_pos{0};
-        // glm::vec2 closest_vel{0};
-        // vecc closest_c = vecc::Zero();
-        // Entity* closest = NN(e_c);
-        // if (closest) {
-        //     closest_pos = POOL.get<Dynamics>(closest)->pos;
-        //     closest_vel = POOL.get<Dynamics>(closest)->vel;
-        //     closest_c = POOL.get<CommComp>(closest)->c;
-        // }
+        glm::vec2 p_j{0};
+        glm::vec2 v_j{0};
+        vecc c_j = vecc::Zero();
+        Entity* closest = loudest(i);
+        if (closest) {
+            p_j = POOL.get<Dynamics>(*closest)->pos;
+            v_j = POOL.get<Dynamics>(*closest)->vel;
+            c_j = POOL.get<CommComp>(*closest)->c;
+        }
 
         Agent& a_i = *POOL.get<Agent>(i);
         Dynamics& d_i = *POOL.get<Dynamics>(i);
-        vecc sum_c = vecc::Zero();
-        Eigen::Vector2f sum_f = Eigen::Vector2f::Zero();
-        POOL.for_<CommComp>([&](CommComp& c_j, Entity& j) {
-            if (i.id == j.id)
-                return;
 
-            Dynamics& d_j = *POOL.get<Dynamics>(j);
-            glm::vec2 p_j = glm::vec2(d_j.pos.x, d_j.pos.z);
-            glm::vec2 v_j = glm::vec2(d_j.vel.x, d_j.vel.z);
-            auto x_i = x(a_i, c_i, d_i, v_j, p_j);
-
-            glm::vec2 diff = p_j - glm::vec2(d_i.pos.x, d_i.pos.z);
-            float proximity = 1.f / glm::dot(diff, diff);
-            sum_c += proximity
-                * (M_c * c_j.c //
-#ifdef NORM_REL
-                   + M_vx * x_i[0] //
-#endif
-                   + M_vy * x_i[1] //
-#if defined(COSINE_REL) || defined(NORM_REL)
-                   + M_s * x_i[2] //
-#endif
-#ifdef NORM_REL
-                   + M_px * x_i[3]
-#endif
-                   + M_py * x_i[4] //
-#if defined(COSINE_REL) || defined(NORM_REL)
-                   + M_d * x_i[5] //
-#endif
-                   + M_g * x_i[6]);
-
-            sum_f += proximity * (static_cast<Eigen::Vector2f>(M_f * c_j.c));
-        });
-        c_i.buf_in(sum_c, sum_f);
+        auto x_i = x(a_i, c_i, d_i, v_j, p_j);
+        c_i.buf_in(M_cv * x_i, static_cast<Eigen::Vector2f>(M_f * c_j));
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
