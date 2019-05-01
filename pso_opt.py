@@ -11,7 +11,7 @@ import asyncio
 
 N_COMM = 3
 # FIXME: Change this TO +7 if NORM_REL is defined
-M_SHAPE = (N_COMM+2, N_COMM+5)
+M_SHAPE = (N_COMM + 2, N_COMM + 5)
 
 
 def write_config(file, config):
@@ -52,7 +52,14 @@ def pretty_mat(np_m):
 
 class Particle:
     def __init__(
-        self, id_, min_config, max_config, scene_set, data_dir, baselines
+        self,
+        id_,
+        min_config,
+        max_config,
+        scene_set,
+        data_dir,
+        baselines,
+        hypers,
     ):
         self.id = id_
         # the baseline always gets 0
@@ -62,6 +69,7 @@ class Particle:
         # intentionally invalid, will be replaced at next minimize with self.pos
         self.local_min = Point()
         self.baselines = baselines
+        self.hypers = hypers
 
         self.pos = Point(np.zeros(shape=M_SHAPE))
 
@@ -83,34 +91,33 @@ class Particle:
                 mag = abs(max_config[r][c] - min_config[r][c])
                 self.vel[r][c] = uniform(-mag, mag)
 
-    async def kickstart(self, build_dir):
+    async def kickstart(self):
         vel = self.vel
         self.vel = np.zeros(shape=M_SHAPE)
-        await self.attempt_move(build_dir)
+        await self.attempt_move()
         self.vel = vel
 
     def debug(self, trace, base, global_min):
         trace.write("\t\ti %s\n" % (self.iters - 1))
         trace.write("\t\tparticle id %s\n" % self.id)
-        trace.write("\t\tprocess id %d\n" % getpid())
-        trace.write("xr %f\n" % (self.pos.score * base.score))
-        trace.write("norm xr/b %f\n" % (self.pos.score))
+        trace.write("xr %f\n" % self.pos.score)
+        trace.write("norm xr/b %f\n" % (self.pos.score / base.score))
         trace.write("Gf %s\n" % global_min.file)
-        trace.write("Gr %f\n" % (global_min.score * base.score))
-        trace.write("norm Gr/b %f\n" % global_min.score)
+        trace.write("Gr %f\n" % global_min.score)
+        trace.write("norm Gr/b %f\n" % (global_min.score / base.score))
         trace.write("xr/Gr %f\n" % (self.pos.score / global_min.score))
         trace.write("xM\n%s\n" % pretty_mat(self.pos.config))
         trace.write("vM\n%s\n" % pretty_mat(self.vel))
         trace.write("gM\n%s\n" % pretty_mat(global_min.config))
 
-    def gravitate(self, global_min, hypers):
+    def gravitate(self, global_min):
         for r in range(M_SHAPE[0]):
             for c in range(M_SHAPE[1]):
                 if r > N_COMM - 1 and c > N_COMM - 1:
                     continue
-                self.integrate_vel(r, c, global_min, hypers)
+                self.integrate_vel(r, c, global_min)
 
-    def integrate_vel(self, r, c, global_min, hypers):
+    def integrate_vel(self, r, c, global_min):
         local_flux = random()
         global_flux = random()
 
@@ -119,20 +126,22 @@ class Particle:
         global_min = global_min.config[r][c]
         pos = self.pos.config[r][c]
 
-        momentum = hypers.w_inertia * vel
-        local_gravity = hypers.w_local * local_flux * (local_min - pos)
-        global_gravity = hypers.w_global * global_flux * (global_min - pos)
+        momentum = self.hypers.w_inertia * vel
+        local_gravity = self.hypers.w_local * local_flux * (local_min - pos)
+        global_gravity = self.hypers.w_global * global_flux * (global_min - pos)
 
         self.vel[r][c] = momentum + local_gravity + global_gravity
 
-    async def attempt_move(self, build_dir):
+    async def attempt_move(self):
         self.pos = await simulate_set(
             self.scene_set,
             self.vel + self.pos.config,
             self.data_dir,
             "%d_p%d" % (self.iters, self.id),
-            lambda res: sum([r.norm(self.baselines[i]) for i, r in enumerate(res)]),
-            build_dir,
+            lambda batch: multipoint_loss(
+                batch, self.hypers.regularizers, self.baselines
+            ),
+            self.hypers.build_dir,
         )
         self.iters += 1
 
@@ -144,13 +153,37 @@ class Particle:
         return global_min
 
 
+def multipoint_loss(points, regularizers, baselines):
+    return sum(
+        [
+            p.elastic(*regularizers).o_hat(baselines[i])
+            for i, p in enumerate(points)
+        ]
+    )
+
+
 class Point:
     def __init__(self, x=None, y=float("inf"), file=None):
         self.config = x
         self.score = y
         self.file = file
 
-    def norm(self, baseline):
+    def elastic(self, l, a):
+        """elastic net regularization (a = 0 -> ridge, a = 1 -> lasso)"""
+        return Point(
+            self.config,
+            self.score + np.interp(a, [0, 1], [self.__l2(l), self.__l1(l)]),
+            self.file,
+        )
+
+    def __l1(self, l):
+        return l * sum(sum(np.abs(self.config)))
+
+    def __l2(self, l):
+        return l * sum(sum(np.square(self.config)))
+
+    def o_hat(self, baseline):
+        """normalize w.r.t. baseline's overhead"""
         return Point(self.config, self.score / baseline.score, self.file)
 
     def __add__(self, other):
@@ -176,6 +209,8 @@ class HyperParameters:
         w_global,
         max_iters,
         max_convergence,
+        reg_lambda,
+        reg_alpha,
         build_dir,
     ):
         self.n_particles = n_particles
@@ -184,6 +219,7 @@ class HyperParameters:
         self.w_global = w_global
         self.max_iters = max_iters
         self.max_convergence = max_convergence
+        self.regularizers = (reg_lambda, reg_alpha)
         self.build_dir = build_dir
 
 
@@ -199,8 +235,8 @@ async def log_exec(prog, args, where):
 
 async def simulate_set(scene_set, config, data_dir, save_name, agg, build_dir):
     sims = (
-        simulate(scene, config, "%s/s%d_" % (data_dir, scene.id), save_name, build_dir)
-        for scene in scene_set
+        simulate(s, config, "%s/s%d_" % (data_dir, s.id), save_name, build_dir)
+        for s in scene_set
     )
     batch = await asyncio.gather(*sims, return_exceptions=True)
     return agg(batch)
@@ -242,7 +278,9 @@ async def record(scene, data_dir, with_comm, build_dir):
 
     try:
         async with SEMAPHORE:
-            await log_exec(prog, args, "%s/%d_%d" % (data_dir, scene.id, with_comm))
+            await log_exec(
+                prog, args, "%s/%d_%d" % (data_dir, scene.id, with_comm)
+            )
     except RuntimeError:
         pass
 
@@ -272,9 +310,15 @@ async def validate(run, model_id, scene, build_dir):
 
 async def PSO(data_dir, scene_set, hypers):
     baselines = await simulate_set(
-        scene_set, np.zeros(shape=M_SHAPE), data_dir, str(0), list, hypers.build_dir
+        scene_set,
+        np.zeros(shape=M_SHAPE),
+        data_dir,
+        str(0),
+        list,
+        hypers.build_dir,
     )
-    baseline = sum(baselines)
+    # this will just be len(scene_set) = len(baselines) for a o_hat'd loss
+    baseline = multipoint_loss(baselines, hypers.regularizers, baselines)
 
     # initialize particles
     global_min = Point()
@@ -283,8 +327,10 @@ async def PSO(data_dir, scene_set, hypers):
     particles = []
     for p in range(hypers.n_particles):
         print("s0=%d i=1 p=%d" % (scene_set[0].id, p), end="\t")
-        p = Particle(p, min_config, max_config, scene_set, data_dir, baselines)
-        await p.kickstart(hypers.build_dir)
+        p = Particle(
+            p, min_config, max_config, scene_set, data_dir, baselines, hypers
+        )
+        await p.kickstart()
         global_min = p.minimize(global_min)
         with open("data/%s/opt.log" % data_dir, "a") as trace:
             p.debug(trace, baseline, global_min)
@@ -296,10 +342,10 @@ async def PSO(data_dir, scene_set, hypers):
 
     for i in range(hypers.max_iters):
         for p in particles:
-            print("s0=%d i=%d p=%d" % (scene_set[0].id, i+2, p.id), end="\t")
+            print("s0=%d i=%d p=%d" % (scene_set[0].id, i + 2, p.id), end="\t")
             # integrate particle swarm dynamics
-            p.gravitate(global_min, hypers)
-            await p.attempt_move(hypers.build_dir)
+            p.gravitate(global_min)
+            await p.attempt_move()
 
             # update known minima
             global_min = p.minimize(global_min)
@@ -333,8 +379,8 @@ def summarize(run, per_result_table):
     n_models = len(per_result_table)
     per_result_table = list(zip(*per_result_table))
 
-    with open("data/%s/best.tsv" % run, "a") as best:
-        header = ["model#", "min config", "comm Jt", "ttc Jt", "exit"]
+    with open("data/%s/loss.tsv" % run, "a") as best:
+        header = ["model#", "min p", "L(c)", "L(ttc)", "exit"]
         best.write("\t".join(header) + "\n")
         for row in per_result_table[0]:
             best.write("\t".join(row) + "\n")
@@ -386,8 +432,8 @@ async def train(run_name, model_id, scene_set, meta_args):
     how, base_val, min_val, min_particle = minimum
     ret = [str(model_id), min_particle, "%f" % min_val, "%f" % base_val, how]
 
-    with open("data/%s/t%d_min/best.tsv" % (run_name, model_id), "w") as f:
-        f.write("model#\tmin p\tcomm Jt\tttc Jt\texit\n")
+    with open("data/%s/t%d_min/loss.tsv" % (run_name, model_id), "w") as f:
+        f.write("model#\tmin p\tL(c)\tL(ttc)\texit\n")
         f.write("\t".join(ret) + "\n")
     return ret
 
@@ -412,14 +458,16 @@ async def task_batch(args, model_id, batch, test_sets):
         args.w_global,
         args.iters,
         args.convergence,
-        args.program
+        args.reg_lambda,
+        args.reg_alpha,
+        args.program,
     )
     model = await train(args.name, model_id, batch, hyper)
     cross_val = await cross_validate(
         args.name,
         model_id,
         [Scene(scene, args.seed) for scene in test_sets[model_id]],
-        args.program
+        args.program,
     )
     return model, cross_val, True
 
@@ -450,14 +498,16 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--iters", type=int, default=225)  # 300) # 450)
     parser.add_argument("--convergence", type=float, default=1e-9)
+    parser.add_argument("--reg_lambda", type=float, default=1)
+    parser.add_argument("--reg_alpha", type=float, default=0.5)
     # not really str, only sometimes. Usually int... : (a or int...)
     parser.add_argument("--batch", type=str, nargs="*", action="append")
     # not really str, only sometimes. Usually int...
     parser.add_argument("--reload", type=str, nargs="*", action="append")
-    parser.add_argument("--program", type=str)
+    parser.add_argument("--program", type=str, default="build")
     args = parser.parse_args()
 
-    all_scenes = [2,4,8,9,12,13,15,18]#list(range(0, 18 + 1))
+    all_scenes = [0, 2, 4, 6, 8, 9, 10, 13, 15, 18]  # list(range(0, 18 + 1))
 
     train_sets = []
     test_sets = []
