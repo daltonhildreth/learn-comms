@@ -3,6 +3,7 @@
 #include "ai/physics.h"
 #include "demo/demo.h"
 #include "io.h"
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -33,7 +34,6 @@ namespace comm {
 //   M_c = cxc
 //   M_v = cx2; (cx1;) cx2; (cx1;) cx1
 //   M_f = 2xc
-//
 
 #ifdef NORM_REL
 const unsigned N_INPUT = NCOMM + 7;
@@ -184,13 +184,18 @@ static Eigen::Matrix<float, N_INPUT, 1> x(
     return x;
 }
 
-// template <size_t K>
-// std::array<Entity*, K> KNN(Entity& i) {
-static Entity* loudest(Entity& i) {
+static float volume2_j_to_i(Dynamics& d_j, CommComp& c_j, glm::vec2 p_i) {
+    glm::vec2 p_j = glm::vec2(d_j.pos.x, d_j.pos.z);
+    glm::vec2 diff = p_j - p_i;
+    vecc atten = c_j.c / glm::length2(diff);
+    return atten.sum();
+}
+
+static Entity* select_max_volume(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
     glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
     float max_volume2 = std::numeric_limits<float>::min();
-    Entity* closest = nullptr;
+    Entity* loudest = nullptr;
 
     // this is *really* inefficient, but oh well.
     POOL.for_<CommComp>([&](CommComp& c_j, Entity& j) {
@@ -198,17 +203,36 @@ static Entity* loudest(Entity& i) {
             return;
 
         Dynamics& d_j = *POOL.get<Dynamics>(j);
-        glm::vec2 p_j = glm::vec2(d_j.pos.x, d_j.pos.z);
-
-        glm::vec2 diff = p_j - p_i;
-        vecc atten = c_j.c / glm::length2(diff);
-        float volume2 = atten.sum();
+        float volume2 = volume2_j_to_i(d_j, c_j, p_i);
         if (volume2 > max_volume2) {
             max_volume2 = volume2;
-            closest = &j;
+            loudest = &j;
         }
     });
-    return closest;
+    return loudest;
+}
+
+static Entity* select_median_volume(Entity& i) {
+    Dynamics& d = *POOL.get<Dynamics>(i);
+    glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
+
+    // this is *really* inefficient, but oh well.
+    std::vector<std::pair<float, Entity*>> v;
+    POOL.for_<CommComp>([&](CommComp& c_j, Entity& j) {
+        if (i.id == j.id)
+            return;
+
+        Dynamics& d_j = *POOL.get<Dynamics>(j);
+        float volume2 = volume2_j_to_i(d_j, c_j, p_i);
+        v.push_back(std::make_pair(volume2, &j));
+    });
+
+    std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end());
+    if (v.size() > 1) {
+        return v[v.size() / 2].second;
+    } else {
+        return nullptr;
+    }
 }
 
 void run() {
@@ -218,18 +242,21 @@ void run() {
         glm::vec2 p_j{0};
         glm::vec2 v_j{0};
         vecc c_j = vecc::Zero();
-        Entity* closest = loudest(i);
-        if (closest) {
-            p_j = POOL.get<Dynamics>(*closest)->pos;
-            v_j = POOL.get<Dynamics>(*closest)->vel;
-            c_j = POOL.get<CommComp>(*closest)->c;
+        Entity* j = select_median_volume(i);
+        if (j) {
+            p_j = POOL.get<Dynamics>(*j)->pos;
+            v_j = POOL.get<Dynamics>(*j)->vel;
+            c_j = POOL.get<CommComp>(*j)->c;
         }
 
         Agent& a_i = *POOL.get<Agent>(i);
         Dynamics& d_i = *POOL.get<Dynamics>(i);
 
         auto x_i = x(a_i, c_i, d_i, v_j, p_j);
-        c_i.buf_in(M_cv * x_i, static_cast<Eigen::Vector2f>(M_f * c_j));
+        c_i.buf_in(
+            static_cast<vecc>(M_cv * x_i),
+            static_cast<Eigen::Vector2f>(M_f * c_j)
+        );
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {
