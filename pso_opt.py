@@ -158,6 +158,7 @@ class Point:
 
 class Scene:
     def __init__(self, id_, seed):
+        print(repr(id_))
         self.id = id_
         self.seed = seed
 
@@ -254,7 +255,7 @@ async def validate(run, model_id, scene):
 
     await record(scene, dst, False)
     b_result = read_result("data/%s/comms.result" % dst)
-    copyfile("data/%s/agent_paths.csv" % dst, "data/%s/b_agent_paths.csv")
+    copyfile("data/%s/agent_paths.csv" % dst, "data/%s/b_agent_paths.csv" % dst)
     await record(scene, dst, True)
     result = read_result("data/%s/comms.result" % dst)
     dst = "data/" + dst
@@ -452,25 +453,37 @@ if __name__ == "__main__":
     if args.batch:
         train_sets = [i[: i.index(":")] for i in args.batch]
         train_sets = [[int(i) for i in s] for s in train_sets]
-        test_sets = [i[i.index(":") + 1 :] for i in args.batch]
-        for i, v in enumerate(test_sets):
+        test_sets_pp = [i[i.index(":") + 1 :] for i in args.batch]
+        test_sets = []
+        for i, v in enumerate(test_sets_pp):
             if "all".find(v[0].lower()) == 0:
-                test_sets[i] = all_scenes
+                test_sets += [all_scenes]
             else:
+                test_sets += [[]]
                 for j, u in enumerate(v):
-                    test_sets[i][j] = int(u)
+                    try:
+                        test_sets[i] += [int(u)]
+                    except ValueError:
+                        r = [int(k) for k in u.split('..')]
+                        test_sets[i] += list(range(r[0], r[1] + 1))
 
     reload_models = []
     retest_sets = []
     if args.reload:
         reload_models = [int(i[0]) for i in args.reload]
-        retest_sets = [i[1:] for i in args.reload]
+        retest_sets_pp = [i[1:] for i in args.reload]
+        retest_sets = []
         for i, v in enumerate(retest_sets):
             if "all".find(v[0].lower()) == 0:
-                retest_sets[i] = all_scenes
+                retest_sets += [all_scenes]
             else:
+                retest_sets += [[]]
                 for j, u in enumerate(v):
-                    retest_sets[i][j] = int(u)
+                    try:
+                        retest_sets[i] += [int(u)]
+                    except ValueError:
+                        r = [int(i) for i in u.split('..')]
+                        retest_sets[i] += list(range(r[0], r[1] + 1))
 
     # Final directory layout of run:
     # best.tsv
