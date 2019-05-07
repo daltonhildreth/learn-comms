@@ -329,7 +329,10 @@ def cp_min(run, model_id, scene_set, minimum):
     copyfile("%s/%s/%s.result" % src, "%s/%s.result" % (dst, min_particle))
 
 
-def summarize(run, per_result_table):
+def summarize(run, per_result_table, task_summary):
+    with open("data/%s/summary.tsv" % run, "a") as summary:
+        summary.write(task_summary)
+
     n_models = len(per_result_table)
     per_result_table = list(zip(*per_result_table))
 
@@ -424,7 +427,7 @@ async def task_batch(args, model_id, batch, test_sets):
     return model, cross_val, True
 
 
-async def task_reload(name, model_name, retest_sets):
+async def task_reload(name, model_name, retest_sets, program):
     # expect args.name/t(model_name)_min to exist as a dir
     # use args.name/t(model_name)_min as the data_dir for recording comms.config
     # cross_validate retest_sets on the data_dir, but append to cross_val.tsv
@@ -432,6 +435,7 @@ async def task_reload(name, model_name, retest_sets):
         name,
         model_name,
         [Scene(scene, args.seed) for scene in retest_sets[model_name]],
+        program,
     )
     return ["rl" + str(model_name)], cross_val, False
 
@@ -444,9 +448,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("name", type=str)
     parser.add_argument("--n_particles", type=int, default=40)  # 30)
-    parser.add_argument("--w_inertia", type=float, default=0.6)  # 0.729)
-    parser.add_argument("--w_local", type=float, default=1.7)  # 1.494)
-    parser.add_argument("--w_global", type=float, default=1.7)  # 1.494)
+    parser.add_argument("--w_inertia", type=float, default=0.729)
+    parser.add_argument("--w_local", type=float, default=1.494)
+    parser.add_argument("--w_global", type=float, default=1.494)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--iters", type=int, default=225)  # 300) # 450)
     parser.add_argument("--convergence", type=float, default=1e-9)
@@ -454,10 +458,10 @@ if __name__ == "__main__":
     parser.add_argument("--batch", type=str, nargs="*", action="append")
     # not really str, only sometimes. Usually int...
     parser.add_argument("--reload", type=str, nargs="*", action="append")
-    parser.add_argument("--program", type=str)
+    parser.add_argument("--program", type=str, default="build")
     args = parser.parse_args()
 
-    all_scenes = [2,4,8,9,12,13,15,18]#list(range(0, 18 + 1))
+    all_scenes = [0, 2, 4, 6, 8, 9, 10, 13, 15, 18]#list(range(0, 18 + 1))
 
     train_sets = []
     test_sets = []
@@ -518,7 +522,7 @@ if __name__ == "__main__":
                 for i, batch in enumerate(train_sets)
             ),
             (
-                task_reload(args.name, model, retest_sets)
+                task_reload(args.name, model, retest_sets, args.program)
                 for model in reload_models
             ),
         )
@@ -526,21 +530,32 @@ if __name__ == "__main__":
         SEMAPHORE = asyncio.Semaphore(len(all_scenes))
         optimize = asyncio.gather(*tasks)  # , return_exceptions=True)
         minima = event_loop.run_until_complete(optimize)
-        print("model  sets  outcome")
+        task_summary = "model  sets  outcome\n"
         for i, outcome in enumerate(optimize.result()):
             if isinstance(outcome, Exception):
-                print(train_sets)
-                print("ERROR", i, outcome)
+                task_summary += str(train_sets) + "\n"
+                task_summary += str("ERROR") + str(i) + str(outcome) + "\n"
             else:
+                # is batch or reload
                 if outcome[2]:
-                    print(i, train_sets[i])
+                    task_summary += str(i) + str(train_sets[i]) + "\n"
                 else:
-                    print(i, reload_models[i])
-                print("\t", outcome[0])
-                for i in outcome[1]:
-                    print("\t", i[1:])
+                    task_summary += str(i) + str(reload_models[i]) + "\n"
+                # model info (#, config, L(c), ???(b), exit how?) or (rl#)
+                task_summary += str("\t") + str(outcome[0]) + "\n"
 
-        summarize(args.name, minima)
+                a = [0, 0, 0]
+                # for result in cross_val
+                for j in outcome[1]:
+                    task_summary += str("\t") + str(j[:]) + str(j[1]/j[2]) + "\n"
+                    a[0] += j[1]
+                    a[1] += j[2]
+                    a[2] += j[1]/j[2]
+                task_summary += str("\tsums:") + str(a) + "\n"
+                task_summary += str("\t^/^") + str(a[0]/a[1]) + "\n"
+                task_summary += str("\t    ^/n") + str(a[2]/len(outcome[1])) + "\n"
+        print(task_summary)
+        summarize(args.name, minima, task_summary)
 
     finally:
         event_loop.close()

@@ -191,6 +191,7 @@ static float volume2_j_to_i(Dynamics& d_j, CommComp& c_j, glm::vec2 p_i) {
     return atten.sum();
 }
 
+/*
 static Entity* select_max_volume(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
     glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
@@ -211,6 +212,7 @@ static Entity* select_max_volume(Entity& i) {
     });
     return loudest;
 }
+*/
 
 static Entity* select_median_volume(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
@@ -227,7 +229,7 @@ static Entity* select_median_volume(Entity& i) {
         v.push_back(std::make_pair(volume2, &j));
     });
 
-    std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end());
+    std::nth_element(v.begin(), v.begin() + static_cast<long>(v.size()) / 2, v.end());
     if (v.size() > 1) {
         return v[v.size() / 2].second;
     } else {

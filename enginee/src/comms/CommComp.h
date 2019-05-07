@@ -19,8 +19,8 @@ struct CommComp {
         // distributed non-linearity
         for (int i = 0; i < NCOMM; ++i) {
             const float x = c_prime[i];
-            c_buf[i] = x / (1.f + std::fabs(x));
-            // x / (1.f + std::fabs(2.f * x)) + 0.5f;
+            c_buf[i] = // x / (1.f + std::fabs(x));
+                x / (1.f + std::fabs(2.f * x)) + 0.5f;
             // glm::two_over_pi<float>() * std::atan(glm::half_pi<float>() * x);
             // glm::one_over_pi<float>() * std::atan(glm::pi<float>() * x) +
             // 0.5f;
