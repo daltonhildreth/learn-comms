@@ -158,7 +158,6 @@ class Point:
 
 class Scene:
     def __init__(self, id_, seed):
-        print(repr(id_))
         self.id = id_
         self.seed = seed
 
@@ -414,14 +413,14 @@ async def task_batch(args, model_id, batch, test_sets):
     return model, cross_val, True
 
 
-async def task_reload(name, model_name, retest_sets):
+async def task_reload(name, model_name, retest_set):
     # expect args.name/t(model_name)_min to exist as a dir
     # use args.name/t(model_name)_min as the data_dir for recording comms.config
     # cross_validate retest_sets on the data_dir, but append to cross_val.tsv
     cross_val = await cross_validate(
         name,
         model_name,
-        [Scene(scene, args.seed) for scene in retest_sets[model_name]],
+        [Scene(scene, args.seed) for scene in retest_set],
     )
     return ["rl" + str(model_name)], cross_val, False
 
@@ -473,7 +472,7 @@ if __name__ == "__main__":
         reload_models = [int(i[0]) for i in args.reload]
         retest_sets_pp = [i[1:] for i in args.reload]
         retest_sets = []
-        for i, v in enumerate(retest_sets):
+        for i, v in enumerate(retest_sets_pp):
             if "all".find(v[0].lower()) == 0:
                 retest_sets += [all_scenes]
             else:
@@ -519,8 +518,8 @@ if __name__ == "__main__":
                 for i, batch in enumerate(train_sets)
             ),
             (
-                task_reload(args.name, model, retest_sets)
-                for model in reload_models
+                task_reload(args.name, model, retest_sets[i])
+                for i, model in enumerate(reload_models)
             ),
         )
 
