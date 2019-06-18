@@ -486,6 +486,26 @@ static Scene make_scene(unsigned scn) {
         };
         break;
     }
+
+    default: { // variable num_robos version of s9
+        if (scn > 100) {
+            s.num_robos = 40u + (scn - 900);
+            s.num_walls = 30u;
+            s.wall_scale = 2.0f;
+            s.cam_dist = .6f;
+            s.max_duration = 100.f;
+            unsigned even_size = s.num_robos / 2;
+            unsigned odd_size = even_size + s.num_robos % 2;
+            std::array<Regiment, 2> r{
+                center({{1, 0}, {-3, 0}, {1.f, 1.f}, 5, odd_size}),
+                center({{-1, 0}, {3, 0}, {1.f, 1.f}, 5, even_size}),
+            };
+            s.pos_of = make_regimented_bots(r);
+            s.goal_of = mirror_x_goal;
+            s.wall_shape_of = make_square_shape(s.wall_scale);
+            s.wall_pos_of = make_hole_wall(1.f, s.wall_scale);
+        }
+    }
     }
     return s;
 }
