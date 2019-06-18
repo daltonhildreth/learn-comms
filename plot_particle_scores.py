@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 import math
@@ -14,6 +15,12 @@ import math
 # 13: hall
 # 14 & 15 & 16 & 17: (asymmetric) simple
 # 18: two doors
+
+font = {'family' : 'normal',
+        'weight' : 'regular',
+        'size'   : 18}
+
+matplotlib.rc('font', **font)
 
 scn_colors = [
     "#D62728", "#FF9896", ### reds
@@ -67,25 +74,27 @@ for plot in [2, 4, 8, 9, 12, 13, 15, 18]:
         iqr += [math.log(abs(q2), 10)]
         max_c = max(max_c, iqr[-1])
         min_c = min(min_c, iqr[-1])
-    window = 1
-    for i in its[window:]:
-        iqr[i] = np.mean(iqr[i-window:i+1])
+    window = 0
+    for i in its[0:]:
+        #iqr[i] = np.mean(iqr[i-window:i+1])
+        iqr[i] = np.min(iqr[max(0, i-1):i+1])
 
-    ax.plot(its[window:], np.array(iqr[window:]), linewidth=1, color=scn_colors[plot])
+    ax.plot(its[window:], np.array(iqr[window:]), linewidth=2, color=scn_colors[plot])
 
     ax.margins(x=0)
-    c10 = (max_c - min_c) / 16.
-    cr = np.arange(min_c, (max_c+c10), c10)
+    #c10 = (max_c - min_c) / 16.
+    #cr = np.arange(min_c, (max_c+c10), c10)
+    cr = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     ir = np.arange(its[window], its[-1]+25, 25)
-    ax.set_yticks([])
-    ax.set_yticklabels(["%.3fx" % math.pow(10, i) for i in cr])
-    ax.set_ylabel(r"Minimum Particle "
+    ax.set_yticks([math.log(i, 10) for i in cr])
+    ax.set_yticklabels(["%.1fx" % i for i in cr])
+    ax.set_ylabel(r"Global Minimum "
           r"$\hat{O}$")
     ax.set_xticks(ir)
-    ax.set_xticklabels([i - 1 for i in ir], rotation=90)
+    ax.set_xticklabels(ir, rotation=90)
     ax.set_xlabel("Iteration")
     #ax.set_title("%d" % plot, loc="right", ha="left", va="top")
 ax.legend(["A","B","C","D","E","F","G","H"], loc="right")#['%d' % plot for plot in [2, 4, 8, 9, 12, 13, 15, 18]], loc = "right")
 
-plt.subplots_adjust(left=0.1, bottom=0.1, right=.98, top=.98, wspace=0, hspace=0)
+plt.subplots_adjust(left=0.15, bottom=0.15, right=.98, top=.98, wspace=0, hspace=0)
 plt.show()
