@@ -1,3 +1,4 @@
+#define GLM_FORCE_SWIZZLE
 #include "comm.h"
 #include "Pool.h"
 #include "ai/physics.h"
@@ -5,6 +6,7 @@
 #include "io.h"
 #include <algorithm>
 #include <fstream>
+#include <glm/glm.hpp>
 #include <sstream>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <Eigen/Dense>
@@ -114,14 +116,17 @@ void init(std::string data_dir_) {
         }
     }
 
+    // clang-format off
+    M_cv <<
 #    if defined(NORM_REL)
-    M_cv << M_vx, M_vy, M_s, M_px, M_py, M_d, M_g;
+        M_vx, M_vy, M_s, M_px, M_py, M_d, M_g;
 #    elif defined(COSINE_REL)
-    M_cv << M_vy, M_s, M_py, M_d, M_g;
+        M_vy, M_s, M_py, M_d, M_g;
 #    else
-M_cv << M_vx, M_vy, M_px, M_py, M_g;
+        M_vx, M_vy, M_px, M_py, M_g;
 #    endif
 #endif
+    // clang-format on
 } // namespace comm
 
 void terminate() {
@@ -170,15 +175,12 @@ static Eigen::Matrix<float, N_INPUT, 1> x(
 #endif
 
     Eigen::Matrix<float, N_INPUT, 1> x;
-    x <<
+    x << c.c,
 #if defined(NORM_REL)
-        c.c,
         rel_v, mag_rv, rel_p, mag_rp, g;
 #elif defined(COSINE_REL)
-        c.c,
         rel_v.y, mag_rv, rel_p.y, mag_rp, g;
 #else
-        c.c,
         rel_v, rel_p, g;
 #endif
     return x;
@@ -191,8 +193,28 @@ static float volume2_j_to_i(Dynamics& d_j, CommComp& c_j, glm::vec2 p_i) {
     return atten.sum();
 }
 
-/*
-static Entity* select_max_volume(Entity& i) {
+/*static*/ Entity* select_nearest(Entity& i) {
+    Dynamics& d = *POOL.get<Dynamics>(i);
+    glm::vec2 p_i = d.pos.xz;
+    float max_dist2 = std::numeric_limits<float>::min();
+    Entity* closest = nullptr;
+
+    // this is *really* inefficient, but oh well.
+    POOL.for_<CommComp>([&](CommComp&, Entity& j) {
+        if (i.id == j.id)
+            return;
+
+        Dynamics& d_j = *POOL.get<Dynamics>(j);
+        float dist2 = glm::length2(d_j.pos.xz - p_i);
+        if (dist2 > max_dist2) {
+            max_dist2 = dist2;
+            closest = &j;
+        }
+    });
+    return closest;
+}
+
+/*static*/ Entity* select_max_volume(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
     glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
     float max_volume2 = std::numeric_limits<float>::min();
@@ -212,9 +234,8 @@ static Entity* select_max_volume(Entity& i) {
     });
     return loudest;
 }
-*/
 
-static Entity* select_median_volume(Entity& i) {
+/*static*/ Entity* select_median_volume(Entity& i) {
     Dynamics& d = *POOL.get<Dynamics>(i);
     glm::vec2 p_i = glm::vec2(d.pos.x, d.pos.z);
 
@@ -229,7 +250,8 @@ static Entity* select_median_volume(Entity& i) {
         v.push_back(std::make_pair(volume2, &j));
     });
 
-    std::nth_element(v.begin(), v.begin() + static_cast<long>(v.size()) / 2, v.end());
+    long mid = v.size() / 2l;
+    std::nth_element(v.begin(), v.begin() + mid, v.end());
     if (v.size() > 1) {
         return v[v.size() / 2].second;
     } else {
@@ -244,7 +266,7 @@ void run() {
         glm::vec2 p_j{0};
         glm::vec2 v_j{0};
         vecc c_j = vecc::Zero();
-        Entity* j = select_median_volume(i);
+        Entity* j = select_nearest(i);
         if (j) {
             p_j = POOL.get<Dynamics>(*j)->pos;
             v_j = POOL.get<Dynamics>(*j)->vel;
