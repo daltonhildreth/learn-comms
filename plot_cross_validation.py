@@ -42,9 +42,9 @@ cbar.ax.set_yticklabels(
         for i in [0.1, 0.2, 0.5, 1, 2, 5, 10]
     ]
 )
-plt.xticks(np.arange(0, 8, 1), ["A","B","C","D","E","F","G","H"])#[2, 4, 8, 9, 12, 13, 15, 18])
+plt.xticks(np.arange(0, 8, 1), ["A","B","C","D","E","F","G","H"])
 plt.xlabel("Training Scenario of Model")
-plt.yticks(np.arange(0, 8, 1), ["A","B","C","D","E","F","G","H"])#[2, 4, 8, 9, 12, 13, 15, 18])
+plt.yticks(np.arange(0, 8, 1), ["A","B","C","D","E","F","G","H"])
 plt.ylabel("Testing Scenario")
 
 plt.subplots_adjust(left=0.0, right=1.0, top=0.90, bottom=0.10)
