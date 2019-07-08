@@ -13,6 +13,9 @@
 #include <glm/gtx/norm.hpp>
 
 namespace comm {
+/*static*/ Entity* select_nearest(Entity& i);
+/*static*/ Entity* select_max_volume(Entity& i);
+/*static*/ Entity* select_median_volume(Entity& i);
 // x,y
 //      = default
 // x,y + mag
@@ -118,7 +121,7 @@ void init(std::string data_dir_) {
     }
 
     // clang-format off
-    M_cv <<
+    M_cv << M_c,
 #    if defined(NORM_REL)
         M_vx, M_vy, M_s, M_px, M_py, M_d, M_g;
 #    elif defined(COSINE_REL)
@@ -139,17 +142,18 @@ void terminate() {
 }
 
 static Eigen::Matrix<float, N_INPUT, 1> x(
-    Agent& a,
-    CommComp& c,
-    Dynamics& d,
+    Agent& ai,
+    CommComp& ci,
+    Dynamics& di,
+    CommComp& cj,
     glm::vec2 vj,
     glm::vec2 pj
 ) {
     // w.r.t. local coordinate frame
-    glm::mat2x2 frame = glm::transpose(glm::mat2x2(c.right(), c.facing));
+    glm::mat2x2 frame = glm::transpose(glm::mat2x2(ci.right(), ci.facing));
 
     // this assumes v_forward/v_right are normalized
-    glm::vec2 diff_v = vj - glm::vec2(d.vel.x, d.vel.z);
+    glm::vec2 diff_v = vj - glm::vec2(di.vel.x, di.vel.z);
     glm::vec2 rel_v = frame * diff_v;
 #if defined(COSINE_REL) || defined(NORM_REL)
     float mag_rv = glm::length(rel_v);
@@ -158,7 +162,7 @@ static Eigen::Matrix<float, N_INPUT, 1> x(
     }
 #endif
 
-    glm::vec2 diff_p = pj - glm::vec2(d.pos.x, d.pos.z);
+    glm::vec2 diff_p = pj - glm::vec2(di.pos.x, di.pos.z);
     glm::vec2 rel_p = frame * diff_p;
 #if defined(COSINE_REL) || defined(NORM_REL)
     float mag_rp = glm::length(rel_p);
@@ -170,13 +174,13 @@ static Eigen::Matrix<float, N_INPUT, 1> x(
     }
 #endif
 
-    float g = a.goal_dist;
+    float g = ai.goal_dist;
 #ifdef SOFTSIGN_GOAL
     g /= 1 + g;
 #endif
 
     Eigen::Matrix<float, N_INPUT, 1> x;
-    x << c.c,
+    x << cj.c,
 #if defined(NORM_REL)
         rel_v, mag_rv, rel_p, mag_rp, g;
 #elif defined(COSINE_REL)
@@ -251,7 +255,7 @@ static float volume2_j_to_i(Dynamics& d_j, CommComp& c_j, glm::vec2 p_i) {
         v.push_back(std::make_pair(volume2, &j));
     });
 
-    long mid = v.size() / 2l;
+    long mid = static_cast<long>(v.size() / 2ul);
     std::nth_element(v.begin(), v.begin() + mid, v.end());
     if (v.size() > 1) {
         return v[v.size() / 2].second;
@@ -266,22 +270,19 @@ void run() {
         // silent, not moving, and not distant.
         glm::vec2 p_j{0};
         glm::vec2 v_j{0};
-        vecc c_j = vecc::Zero();
+        CommComp* c_j = nullptr;
         Entity* j = select_nearest(i);
         if (j) {
             p_j = POOL.get<Dynamics>(*j)->pos;
             v_j = POOL.get<Dynamics>(*j)->vel;
-            c_j = POOL.get<CommComp>(*j)->c;
+            c_j = POOL.get<CommComp>(*j);
         }
 
         Agent& a_i = *POOL.get<Agent>(i);
         Dynamics& d_i = *POOL.get<Dynamics>(i);
 
-        auto x_i = x(a_i, c_i, d_i, v_j, p_j);
-        c_i.buf_in(
-            static_cast<vecc>(M_cv * x_i),
-            static_cast<Eigen::Vector2f>(M_f * c_j)
-        );
+        auto x_i = x(a_i, c_i, d_i, *c_j, v_j, p_j);
+        c_i.buf_in(M_cv * x_i, M_f * c_j->c);
     });
 
     POOL.for_<CommComp>([&](CommComp& c, Entity& e_c) {

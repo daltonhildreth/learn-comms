@@ -26,7 +26,7 @@ Largely as per the official [getting started](https://clang.llvm.org/get_started
 page of clang with minor convenience changes.
 
 ```sh
-git submodule update --init tools/clang
+git -c submodule."tools/clang".update=checkout submodule update --init tools/clang
 cd tools
 git clone git@github.com:llvm-mirror/llvm.git
 cd llvm
@@ -36,7 +36,7 @@ cd ..
 ln -s ../../clang llvm/tools/clang
 mkdir build
 cd build
-cmake ../llvm
+cmake ../llvm -DCMAKE_BUILD_TYPE=Release
 make clang-format
 cd ..
 ```

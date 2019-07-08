@@ -1,17 +1,11 @@
 #!/bin/bash
 # Copyright (c) 2016-2018 Dalton Hildreth
 # This file is under the MIT license. See the LICENSE file for details.
-set -exuo
+set -euo pipefail
 
 printf "%-45s" "Removing old 3rd-party libs..."
 {
-    if [pwd == .*"gg-engine/lib/"]; then
-        cd ..
-    fi
-    if [pwd != .*"gg-engine"]; then
-        printf "ERROR: wrong dir\ngoto gg-engine/lib or gg-engine"
-        exit
-    fi
+    cd "$(dirname "$(realpath "$0")")"/..
     rm -rf lib/*/ lib/catch.hpp lib/stb_image.h
     cd lib
 } &> /dev/null
@@ -19,7 +13,7 @@ printf "%15s\n" "Done."
 printf "%-45s\n" "Downloading latest 3rd-party libs..."
 
 # Refresh Catch
-printf "%-45s" "Downloading latest catch.hpp..."
+printf "%-45s" "Downloading Catch..."
 curl -s https://api.github.com/repositories/1062572/releases/latest \
     | jq --raw-output '.assets[0] | .browser_download_url' \
     | xargs wget \
@@ -49,7 +43,7 @@ cd ..
 printf "%15s\n" "Done."
 
 #Refresh stb_image*
-printf "%-45s" "Downloading latest version of stb_image.h..."
+printf "%-45s" "Downloading latest version of stb_image..."
 {
     git clone --depth=1 https://github.com/nothings/stb.git
     # find . -not -name 'stb_image.h' | xargs rm -rf
@@ -60,12 +54,14 @@ printf "%-45s" "Downloading latest version of stb_image.h..."
 printf "%15s\n" "Done."
 
 # Refresh Eigen3
-printf "%-45s" "Downloading latest version of Eigen v3..."
-git clone --depth=1 --single-branch -b branches/3.0 https://github.com/eigenteam/eigen-git-mirror.git eigen &> /dev/null
+printf "%-45s" "Downloading latest version of Eigen v3.3..."
+git clone --depth=1 --single-branch -b branches/3.3 \
+    https://github.com/eigenteam/eigen-git-mirror.git eigen \
+    &> /dev/null
 printf "%15s\n" "Done."
 
 #Remove the git histories. (unneeded)
-printf "%-45s" "Cleaning libs..."
+printf "%-45s" "Purging temp files..."
 {
     cd ..
     find lib -name '.git' | xargs rm -rf
