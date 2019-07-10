@@ -26,17 +26,13 @@ Largely as per the official [getting started](https://clang.llvm.org/get_started
 page of clang with minor convenience changes.
 
 ```sh
-git -c submodule."tools/clang".update=checkout submodule update --init tools/clang
-cd tools
-git clone git@github.com:llvm-mirror/llvm.git
-cd llvm
-# for some reason LLVM won't build on master, stable, or release_80
-git reset --hard a62ff5dd41fe45ae7211c84ed02e6c3753e5b3a5
-cd ..
+# $PWD = tools
+git -c submodule."tools/clang".update=checkout submodule update --init clang
+git clone git@github.com:llvm-mirror/llvm.git -b release_80 --depth=1
 ln -s ../../clang llvm/tools/clang
 mkdir build
 cd build
 cmake ../llvm -DCMAKE_BUILD_TYPE=Release
-make clang-format
+cmake --build . --target clang-format --parallel
 cd ..
 ```
