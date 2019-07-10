@@ -3,7 +3,7 @@
 # not perfect, so you should still use your best judgement. Thus, you should
 # use the client-side hook (in ./hooks/) that suggests changes to your patches.
 # clang-format version 8.0.0 (git@github.com:fiblit/clang.git)
-# LLVM version (a62ff5dd41fe45ae7211c84ed02e6c3753e5b3a5)
+# LLVM version (release_80)
 ---
 Language: Cpp
 

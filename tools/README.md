@@ -22,17 +22,7 @@ Other extra options are planned to be more consistent with the style guide,
 
 ### How-To Build
 
-Largely as per the official [getting started](https://clang.llvm.org/get_started.html)
-page of clang with minor convenience changes.
+Build this custom clang-format by running ./build.sh within the tools directory.
 
-```sh
-# $PWD = tools
-git -c submodule."tools/clang".update=checkout submodule update --init clang
-git clone git@github.com:llvm-mirror/llvm.git -b release_80 --depth=1
-ln -s ../../clang llvm/tools/clang
-mkdir build
-cd build
-cmake ../llvm -DCMAKE_BUILD_TYPE=Release
-cmake --build . --target clang-format --parallel
-cd ..
-```
+It runs largely as per the official [getting started](https://clang.llvm.org/get_started.html)
+page of clang with minor convenience changes.
